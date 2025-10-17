@@ -26,6 +26,8 @@ export default function App() {
   // Estado para tema escuro/claro
   const [darkMode, setDarkMode] = useState(false);
 
+  //teste git
+
   // Cores do tema — aqui definimos manualmente as cores com base no modo atual
   const theme = useMemo(() => {
     return {
