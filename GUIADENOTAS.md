@@ -15,19 +15,19 @@ Aqui vai um plano curto e prático, por prioridades, para levar o teu jogo de �
   * `accessible`, `accessibilityRole`, `accessibilityLabel` nos botões principais.
   * Aumentar `hitSlop` e garantir contraste suficiente no tema escuro.
 
-* **Feedback tátil**
+* **Feedback tátil** 
 
   * Expo Haptics nas ações principais (marcar célula, vitória, derrota).
   * `expo install expo-haptics` e chamar haptics em `handleCell` e quando o jogo termina.
 
-* **Animações simples**
+* **Animações simples** - CARLOS
 
   * Opacidade/scale ao marcar célula e pequeno “pop” no vencedor.
   * Dá para fazer com `Animated` ou `react-native-reanimated`/`moti` se quiseres suavidade extra.
 
 ## 2) Jogabilidade e UX
 
-* **Dificuldades do bot**
+* **Dificuldades do bot** - DIFICULDADE DOS BOTS
 
   * Hoje é “primeira vaga”. Sugiro três níveis:
 
@@ -36,40 +36,33 @@ Aqui vai um plano curto e prático, por prioridades, para levar o teu jogo de �
     * Difícil: minimax com podas (rápido no 3x3).
   * Expor a dificuldade nas Definições ou no ecrã SinglePlayer.
 
-* **Desfazer jogada (undo)**
+* **Desfazer jogada (undo)** - NELSON
 
   * Manter uma pilha de estados do tabuleiro. Permite corrigir toque acidental e ajuda a testar.
 
-* **Primeira jogada alternada**
-
-  * Alternar automaticamente quem começa a cada partida; opcional de “human first”, “bot first”, “alternado”.
 
 * **Estados de fim mais claros**
 
   * Ao terminar, overlay com “Vitória”, “Empate”, “Derrota” e botões “Jogar de novo” e “Voltar ao menu”.
 
-* **Temas adicionais e acessibilidade cromática**
-
-  * Um tema de alto contraste.
-  * Paletas colorblind-friendly (por exemplo, diferenciar X e O por forma/traço além de cor).
 
 ## 3) Estatísticas e meta-jogo
 
-* **Mais métricas**
+* **Mais métricas** 
 
   * Streaks de vitórias, tempo médio por jogo, taxa de vitória por dificuldade.
   * Guardar por data para gerar histórico.
 
-* **Gráficos simples**
+* **Gráficos simples** 
 
   * `react-native-svg` + `victory-native` para um gráfico de linhas da evolução de vitórias.
   * Alternativa leve: mini charts “sparklines” com `react-native-svg` puro.
 
-* **Conquistas**
+* **Conquistas** - carlos
 
   * Exemplos: “3 vitórias seguidas”, “vitória em 3 jogadas”, “ganhou começando 2.º”.
 
-## 4) Qualidade de código
+## 4) Qualidade de código - so no final que vemos isso
 
 * **Estabilizar callbacks com `useCallback`**
 
