@@ -1,95 +1,131 @@
-// -----------------------------------------------------------------------------
-// Algoritmo que define a jogada do bot no modo "Single Player"
-// -----------------------------------------------------------------------------
+export type Difficulty = "easy" | "medium" | "hard";
+type Cell = null | "X" | "O";
 
-// Exporta a função principal "botMove" que recebe o tabuleiro atual
-export const botMove = (board: (null | "X" | "O")[]): number | null => {
-  // O bot joga sempre com "O"
-  const bot = "O";
-  const human = "X";
+// -----------------------------------------------------------------------------
+// Função principal do bot, agora com dificuldade
+// -----------------------------------------------------------------------------
+export const botMove = (
+  board: Cell[],
+  botMark: "X" | "O" = "O",
+  difficulty: Difficulty = "medium"
+): number | null => {
+  switch (difficulty) {
+    case "easy":
+      return randomMove(board);
+    case "medium":
+      return heuristicMove(board, botMark);
+    case "hard":
+      return minimaxMove(board, botMark);
+  }
+};
 
-  // ---------------------------------------------------------------------------
-  // 1️⃣ Passo: Verifica se o bot pode vencer nesta jogada
-  // ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Easy: qualquer posição livre aleatória
+// -----------------------------------------------------------------------------
+function randomMove(board: Cell[]): number | null {
+  const empty = board.map((v, i) => (!v ? i : null)).filter((v) => v !== null) as number[];
+  if (empty.length === 0) return null;
+  return empty[Math.floor(Math.random() * empty.length)];
+}
+
+// -----------------------------------------------------------------------------
+// Medium: vitória > bloqueio > centro > cantos > lados
+// -----------------------------------------------------------------------------
+function heuristicMove(board: Cell[], bot: "X" | "O"): number | null {
+  const human: "X" | "O" = bot === "X" ? "O" : "X";
+
+  // 1️⃣ Tenta vencer
   for (let i = 0; i < board.length; i++) {
-    // Se a posição estiver vazia
     if (!board[i]) {
-      // Faz uma cópia do tabuleiro
       const temp = [...board];
-      // Simula a jogada do bot
       temp[i] = bot;
-      // Se após jogar o bot vencer, retorna essa posição imediatamente
       if (checkWinner(temp) === bot) return i;
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // 2️⃣ Passo: Impede o humano de vencer no próximo turno
-  // ---------------------------------------------------------------------------
+  // 2️⃣ Bloqueia humano
   for (let i = 0; i < board.length; i++) {
-    // Testa posições vazias
     if (!board[i]) {
       const temp = [...board];
-      temp[i] = human; // simula jogada do humano
-      if (checkWinner(temp) === human) return i; // bloqueia o humano
+      temp[i] = human;
+      if (checkWinner(temp) === human) return i;
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // 3️⃣ Passo: Caso não haja vitórias ou bloqueios, escolhe jogada estratégica
-  // ---------------------------------------------------------------------------
-  // Centro do tabuleiro é a melhor jogada
+  // 3️⃣ Estratégia: centro > cantos > lados
   if (!board[4]) return 4;
 
-  // Cantos são boas opções
-  const corners = [0, 2, 6, 8];
-  const emptyCorners = corners.filter((c) => !board[c]);
-  if (emptyCorners.length > 0) {
-    // Escolhe um canto aleatório
-    return emptyCorners[Math.floor(Math.random() * emptyCorners.length)];
-  }
+  const corners = [0, 2, 6, 8].filter((i) => !board[i]);
+  if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
 
-  // Caso não haja cantos livres, joga num lado qualquer disponível
-  const sides = [1, 3, 5, 7];
-  const emptySides = sides.filter((s) => !board[s]);
-  if (emptySides.length > 0) {
-    // Escolhe um lado aleatório
-    return emptySides[Math.floor(Math.random() * emptySides.length)];
-  }
+  const sides = [1, 3, 5, 7].filter((i) => !board[i]);
+  if (sides.length) return sides[Math.floor(Math.random() * sides.length)];
 
-  // ---------------------------------------------------------------------------
-  // 4️⃣ Se o tabuleiro estiver cheio e não houver jogada possível → retorna null
-  // ---------------------------------------------------------------------------
   return null;
-};
+}
 
 // -----------------------------------------------------------------------------
-// Função auxiliar "checkWinner" que determina se há vencedor
+// Hard: Minimax para jogada perfeita
 // -----------------------------------------------------------------------------
-const checkWinner = (b: (null | "X" | "O")[]): "X" | "O" | "Empate" | null => {
-  // Lista de todas as combinações vencedoras
-  const wins = [
-    [0, 1, 2], // Linha 1
-    [3, 4, 5], // Linha 2
-    [6, 7, 8], // Linha 3
-    [0, 3, 6], // Coluna 1
-    [1, 4, 7], // Coluna 2
-    [2, 5, 8], // Coluna 3
-    [0, 4, 8], // Diagonal principal
-    [2, 4, 6], // Diagonal secundária
-  ];
+function minimaxMove(board: Cell[], bot: "X" | "O"): number | null {
+  const human: "X" | "O" = bot === "X" ? "O" : "X";
 
-  // Percorre todas as combinações
-  for (const [a, b1, c] of wins) {
-    // Se três casas contêm o mesmo símbolo (X ou O)
-    if (b[a] && b[a] === b[b1] && b[a] === b[c]) {
-      return b[a]; // retorna o vencedor
+  function minimax(b: Cell[], isMax: boolean): number {
+    const winner = checkWinner(b);
+    if (winner === bot) return 10;
+    if (winner === human) return -10;
+    if (b.every((c) => c)) return 0;
+
+    const scores: number[] = [];
+    for (let i = 0; i < b.length; i++) {
+      if (!b[i]) {
+        const copy = [...b];
+        copy[i] = isMax ? bot : human;
+        scores.push(minimax(copy, !isMax));
+      }
+    }
+
+    return isMax ? Math.max(...scores) : Math.min(...scores);
+  }
+
+  let bestScore = -Infinity;
+  let bestMove: number | null = null;
+
+  for (let i = 0; i < board.length; i++) {
+    if (!board[i]) {
+      const copy = [...board];
+      copy[i] = bot;
+      const score = minimax(copy, false);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = i;
+      }
     }
   }
 
-  // Se todas as casas estiverem preenchidas e ninguém venceu → empate
-  if (b.every((cell) => cell !== null)) return "Empate";
+  return bestMove;
+}
 
-  // Caso contrário, ainda não há vencedor
+// -----------------------------------------------------------------------------
+// Função que verifica vencedor ou empate
+// -----------------------------------------------------------------------------
+const checkWinner = (b: Cell[]): "X" | "O" | "Empate" | null => {
+  const wins = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+  ];
+
+  for (const [a, b1, c] of wins) {
+    if (b[a] && b[a] === b[b1] && b[a] === b[c]) return b[a];
+  }
+
+  if (b.every((c) => c !== null)) return "Empate";
+
   return null;
 };
