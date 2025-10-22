@@ -35,7 +35,7 @@ export default function SinglePlayer({ onChooseMark, onBack }: Props) {
 
       {/* Explicação da convenção de quem começa */}
       <Text style={[styles.subtitle, { color: colors.text }]}>
-        X começa o jogo. Se escolheres O, o bot (X) joga primeiro.
+        Se escolheres X começas o jogo. Se escolheres O, o bot (X) joga primeiro.
       </Text>
 
       {/* Área das opções */}
@@ -52,7 +52,7 @@ export default function SinglePlayer({ onChooseMark, onBack }: Props) {
           accessibilityLabel="Escolher X"
         >
           <Text style={[styles.mark, { color: colors.text }]}>X</Text>
-          <Text style={[styles.caption, { color: colors.text }]}>Cruzes</Text>
+          <Text style={[styles.caption, { color: colors.text }]}>Cruz</Text>
           <Text style={[styles.note, { color: colors.muted }]}>Começas primeiro</Text>
         </TouchableOpacity>
 
@@ -68,8 +68,8 @@ export default function SinglePlayer({ onChooseMark, onBack }: Props) {
           accessibilityLabel="Escolher O"
         >
           <Text style={[styles.mark, { color: colors.text }]}>O</Text>
-          <Text style={[styles.caption, { color: colors.text }]}>Círculos</Text>
-          <Text style={[styles.note, { color: colors.muted }]}>Bot começa</Text>
+          <Text style={[styles.caption, { color: colors.text }]}>Círculo</Text>
+          <Text style={[styles.note, { color: colors.muted }]}>O Bot começa</Text>
         </TouchableOpacity>
       </View>
 
