@@ -1,230 +1,227 @@
-// Importa React e hooks de estado e efeito
-import React, { useState, useEffect } from "react";
+// src/screens/Game.tsx
 
+// Importa React e hooks necessários
+import React, { useState, useEffect, useMemo, useRef } from "react";
 // Importa componentes do React Native
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+// Importa tema global
+import { useTheme } from "../theme/Theme";
 
-// Importa o algoritmo que calcula a jogada do bot
-import { botMove } from "../utils/bot";
-
-// Define o tipo das propriedades (props) recebidas do App
-type GameProps = {
-  players: string[];        // nomes dos jogadores → ["Jogador 1", "Jogador 2" ou "Bot"]
-  isSingle: boolean;        // indica se o modo atual é single player
-  darkMode: boolean;        // indica se o modo escuro está ativo
-  onExit: () => void;       // função chamada ao sair do jogo
+// Define as props para este ecrã
+type Props = {
+  onWin?: () => void;            // chamado quando o humano vence
+  onDraw?: () => void;           // chamado quando há empate
+  onLoss?: () => void;           // chamado quando o humano perde (bot vence)
+  onExit?: () => void;           // sair do jogo
+  botEnabled?: boolean;          // ativa bot no singleplayer
+  botMark?: "X" | "O";           // qual símbolo o bot usa
 };
 
-// Componente principal do ecrã do jogo
-export default function Game({ players, isSingle, darkMode, onExit }: GameProps) {
-  // Estado do tabuleiro (9 casas). Cada casa pode ser "X", "O" ou null
-  const [board, setBoard] = useState<(null | "X" | "O")[]>(Array(9).fill(null));
+// Gera um tabuleiro 3x3 vazio
+const makeEmptyBoard = () =>
+  [
+    [null, null, null],
+    [null, null, null],
+    [null, null, null],
+  ] as (null | "X" | "O")[][];
 
-  // Estado que indica o jogador atual (começa sempre com "X")
-  const [current, setCurrent] = useState<"X" | "O">("X");
+// Determina o vencedor do tabuleiro
+function getWinner(b: (null | "X" | "O")[][]): "X" | "O" | null {
+  const lines: (("X" | "O" | null)[])[] = [
+    [b[0][0], b[0][1], b[0][2]],
+    [b[1][0], b[1][1], b[1][2]],
+    [b[2][0], b[2][1], b[2][2]],
+    [b[0][0], b[1][0], b[2][0]],
+    [b[0][1], b[1][1], b[2][1]],
+    [b[0][2], b[1][2], b[2][2]],
+    [b[0][0], b[1][1], b[2][2]],
+    [b[0][2], b[1][1], b[2][0]],
+  ];
+  for (const [a, b1, c] of lines) {
+    if (a && a === b1 && b1 === c) return a;
+  }
+  return null;
+}
 
-  // Estado que guarda o vencedor ("X", "O", "Empate" ou null)
-  const [winner, setWinner] = useState<null | "X" | "O" | "Empate">(null);
-
-  // Estado que indica se é o turno do bot (bloqueia cliques enquanto o bot joga)
-  const [botTurn, setBotTurn] = useState(false);
-
-  // Função que reinicia o jogo
-  const resetGame = () => {
-    setBoard(Array(9).fill(null)); // limpa o tabuleiro
-    setCurrent("X");               // X começa
-    setWinner(null);               // limpa o vencedor
-    setBotTurn(false);             // desbloqueia bot
-  };
-
-  // Função que verifica se há vencedor no tabuleiro
-  const checkWinner = (b: (null | "X" | "O")[]): "X" | "O" | "Empate" | null => {
-    // Combinações vencedoras (linhas, colunas e diagonais)
-    const wins = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6],
-    ];
-
-    // Percorre todas as combinações e verifica se há 3 iguais
-    for (const [a, b1, c] of wins) {
-      if (b[a] && b[a] === b[b1] && b[a] === b[c]) return b[a];
+// Estratégia simples do bot: escolhe a primeira casa livre
+function chooseBotMove(board: (null | "X" | "O")[][]): [number, number] | null {
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      if (board[r][c] === null) return [r, c];
     }
+  }
+  return null;
+}
 
-    // Se todas as casas estiverem preenchidas e ninguém venceu → empate
-    if (b.every((cell) => cell !== null)) return "Empate";
+// Componente principal do jogo
+export default function Game({
+  onWin,
+  onDraw,
+  onLoss,
+  onExit,
+  botEnabled = false,  // por omissão não há bot
+  botMark = "O",       // por omissão o bot joga como "O"
+}: Props) {
+  // Paleta do tema atual
+  const { colors } = useTheme();
 
-    // Caso contrário, o jogo continua
-    return null;
-  };
+  // Estado do tabuleiro com valor inicial seguro
+  const [board, setBoard] = useState<(null | "X" | "O")[][]>(makeEmptyBoard());
+  // Estado do turno atual
+  const [turn, setTurn] = useState<"X" | "O">("X");
 
-  // Efeito: se for modo single e for a vez do bot ("O"), ele joga automaticamente
+  // Refs para callbacks, para não depender da identidade das funções nas deps
+  const onWinRef = useRef(onWin);
+  const onDrawRef = useRef(onDraw);
+  const onLossRef = useRef(onLoss);
+
+  // Sincroniza as refs sempre que as props mudem
+  useEffect(() => { onWinRef.current  = onWin;  }, [onWin]);
+  useEffect(() => { onDrawRef.current = onDraw; }, [onDraw]);
+  useEffect(() => { onLossRef.current = onLoss; }, [onLoss]);
+
+  // Cálculo do estado do jogo
+  const winner = useMemo(() => getWinner(board), [board]);
+  const isFull = useMemo(() => board.every((row) => row.every((c) => c !== null)), [board]);
+
+  // Determina o símbolo do humano conforme o símbolo do bot
+  const humanMark: "X" | "O" = botMark === "X" ? "O" : "X";
+
+  // Efeito de término do jogo, depende apenas de winner e isFull
   useEffect(() => {
-    if (isSingle && current === "O" && !winner) {
-      setBotTurn(true); // ativa bloqueio para impedir o jogador de clicar
-      const timeout = setTimeout(() => {
-        const move = botMove([...board]); // pede ao bot a melhor jogada
-        if (move !== null) handlePress(move, true); // faz a jogada do bot
-        setBotTurn(false); // desbloqueia jogadas humanas
-      }, 600); // pequena pausa para parecer natural
-      return () => clearTimeout(timeout);
-    }
-  }, [current, isSingle, board, winner]);
+    if (winner === humanMark) onWinRef.current && onWinRef.current();
+    else if (winner === botMark) onLossRef.current && onLossRef.current();
+    else if (!winner && isFull) onDrawRef.current && onDrawRef.current();
+  }, [winner, isFull, humanMark, botMark]);
 
-  // Função chamada quando o jogador toca numa célula
-  const handlePress = (index: number, isBot: boolean = false) => {
-    // Se já existe algo nessa célula, o jogo acabou, ou é turno do bot → ignora
-    if (board[index] || winner || (isSingle && current === "O" && !isBot)) return;
+  // Evita decisões múltiplas do bot sobrepostas
+  const botThinkingRef = useRef(false);
 
-    // Copia o estado atual do tabuleiro
-    const newBoard = [...board];
-    // Marca a jogada do jogador atual ("X" ou "O")
-    newBoard[index] = current;
-    // Atualiza o tabuleiro com a jogada
-    setBoard(newBoard);
+  // Efeito que executa a jogada do bot quando for a vez dele
+  useEffect(() => {
+    if (!botEnabled) return;     // sem bot, não faz nada
+    if (winner || isFull) return;// se terminou, não faz nada
+    if (turn !== botMark) return;// só age no turno do bot
+    if (botThinkingRef.current) return; // evita múltiplas execuções
 
-    // Verifica se alguém venceu
-    const win = checkWinner(newBoard);
-    if (win) {
-      setWinner(win); // define o vencedor
-    } else {
-      // Alterna o turno: se era "X" passa para "O", e vice-versa
-      setCurrent(current === "X" ? "O" : "X");
-    }
+    botThinkingRef.current = true; // marca que o bot está a decidir
+    const t = setTimeout(() => {
+      const move = chooseBotMove(board);           // escolhe uma jogada simples
+      if (move) {
+        const [r, c] = move;                       // extrai linha e coluna
+        const next = board.map((row) => row.slice());// clona o tabuleiro
+        if (next[r][c] === null) {                 // valida a célula
+          next[r][c] = botMark;                    // marca jogada do bot
+          setBoard(next);                          // atualiza tabuleiro
+          setTurn(humanMark);                      // passa a vez ao humano
+        }
+      }
+      botThinkingRef.current = false;              // liberta a flag
+    }, 250);                                       // pequeno atraso para fluidez
+
+    return () => clearTimeout(t);                  // cleanup do timeout
+  }, [botEnabled, turn, botMark, humanMark, board, winner, isFull]);
+
+  // Handler de toque numa célula pelo humano
+  const handleCell = (r: number, c: number) => {
+    if (winner) return;                            // não permite jogadas após término
+    if (botEnabled && turn !== humanMark) return;  // se houver bot, respeita turno
+
+    const next = board.map((row) => row.slice());  // clona tabuleiro
+    if (next[r][c] !== null) return;               // ignora células ocupadas
+
+    next[r][c] = humanMark;                        // marca jogada do humano
+    setBoard(next);                                // atualiza tabuleiro
+    setTurn(botEnabled ? botMark : (humanMark === "X" ? "O" : "X")); // alterna turno
   };
 
-  // Cor de fundo e texto conforme o tema
-  const backgroundColor = darkMode ? "#121212" : "#FFFFFF";
-  const textColor = darkMode ? "#FFFFFF" : "#000000";
-  const borderColor = darkMode ? "#FFFFFF" : "#000000";
-
-  // Função que confirma antes de sair do jogo
-  const confirmExit = () => {
-    if (!winner) {
-      Alert.alert(
-        "Sair do jogo",
-        "Tens a certeza que queres desistir e voltar ao menu?",
-        [
-          { text: "Cancelar", style: "cancel" },
-          { text: "Sim", onPress: onExit },
-        ]
-      );
-    } else {
-      onExit();
-    }
+  // Reinicia a partida
+  const handleReset = () => {
+    setBoard(makeEmptyBoard());                    // limpa tabuleiro
+    setTurn("X");                                  // X começa novamente
+    botThinkingRef.current = false;                // limpa flag do bot
   };
 
-  // Renderização da interface principal do jogo
+  // Confirmação de saída
+  const handleExit = () => {
+    Alert.alert("Sair", "Queres sair do jogo?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Sair", style: "destructive", onPress: () => onExit && onExit() },
+    ]);
+  };
+
+  // Render do ecrã de jogo
   return (
-    <View style={[styles.container, { backgroundColor }]}>
-      {/* Barra superior com o botão de voltar */}
-      <TouchableOpacity onPress={confirmExit} style={styles.backButton}>
-        <Text style={[styles.backText, { color: textColor }]}>← Voltar</Text>
-      </TouchableOpacity>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>Jogo do Galo</Text>
 
-      {/* Título e estado do jogo */}
-      <Text style={[styles.title, { color: textColor }]}>Jogo do Galo</Text>
+      {!winner && !isFull && (
+        <Text style={[styles.info, { color: colors.text }]}>
+          Vez do: {turn} {botEnabled && turn === botMark ? "(bot)" : ""}
+        </Text>
+      )}
+      {winner && (
+        <Text style={[styles.info, { color: colors.text }]}>
+          Vencedor: {winner} {botEnabled && winner === botMark ? "(bot)" : ""}
+        </Text>
+      )}
+      {!winner && isFull && (
+        <Text style={[styles.info, { color: colors.text }]}>Empate</Text>
+      )}
 
-      {/* Mensagem que mostra o estado atual (vez, vitória, empate) */}
-      <Text style={[styles.status, { color: textColor }]}>
-        {winner
-          ? winner === "Empate"
-            ? "Empate!"
-            : `${winner === "X" ? players[0] : players[1]} venceu!`
-          : botTurn
-          ? "Bot a jogar..."
-          : `É a vez de ${current === "X" ? players[0] : players[1]} (${current})`}
-      </Text>
-
-      {/* Tabuleiro 3x3 */}
       <View style={styles.board}>
-        {board.map((cell, i) => (
-          <TouchableOpacity
-            key={i}
-            style={[styles.cell, { borderColor }]}
-            onPress={() => handlePress(i)} // faz jogada se permitido
-          >
-            <Text style={[styles.cellText, { color: textColor }]}>{cell}</Text>
-          </TouchableOpacity>
+        {board.map((row, r) => (
+          <View key={r} style={styles.row}>
+            {row.map((cell, c) => (
+              <TouchableOpacity
+                key={`${r}-${c}`}
+                style={[
+                  styles.cell,
+                  { borderColor: colors.border, backgroundColor: colors.card },
+                ]}
+                onPress={() => handleCell(r, c)}
+              >
+                <Text style={[styles.cellText, { color: colors.text }]}>
+                  {cell ?? ""}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         ))}
       </View>
 
-      {/* Botões inferiores */}
-      <View style={styles.buttonsRow}>
-        <TouchableOpacity style={[styles.button, { backgroundColor: "#6c757d" }]} onPress={resetGame}>
-          <Text style={styles.buttonText}>Reiniciar</Text>
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={handleReset}
+        >
+          <Text style={[styles.buttonText, { color: colors.text }]}>Reiniciar</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.button, { backgroundColor: "#dc3545" }]} onPress={confirmExit}>
-          <Text style={styles.buttonText}>Sair</Text>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={handleExit}
+        >
+          <Text style={[styles.buttonText, { color: colors.text }]}>Sair</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-// -----------------------------------------------------------------------------
-// Estilos visuais do jogo
-// -----------------------------------------------------------------------------
+// Estilos do ecrã de jogo
 const styles = StyleSheet.create({
-  container: {
-    flex: 1, // ocupa todo o ecrã
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  backButton: {
-    position: "absolute",
-    top: 40,
-    left: 20,
-  },
-  backText: {
-    fontSize: 18,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  status: {
-    fontSize: 18,
-    marginBottom: 20,
-  },
-  board: {
-    width: 300,
-    height: 300,
-    flexDirection: "row",
-    flexWrap: "wrap", // permite formar o 3x3
-  },
+  container: { flex: 1, padding: 16, alignItems: "center", justifyContent: "center" }, // layout centralizado
+  title: { fontSize: 22, fontWeight: "700", marginBottom: 8 },                           // título
+  info: { fontSize: 16, marginBottom: 12 },                                              // texto informativo
+  board: { },                                                                             // wrapper do tabuleiro
+  row: { flexDirection: "row" },                                                          // linha do tabuleiro
   cell: {
-    width: "33.33%", // 3 células por linha
-    height: "33.33%",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
+    width: 84, height: 84, borderWidth: 1, alignItems: "center", justifyContent: "center",
+    margin: 2, borderRadius: 10,
   },
-  cellText: {
-    fontSize: 32,
-    fontWeight: "bold",
-  },
-  buttonsRow: {
-    flexDirection: "row",
-    marginTop: 24,
-  },
-  button: {
-    marginHorizontal: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    textAlign: "center",
-  },
+  cellText: { fontSize: 28, fontWeight: "800" },                                          // X/O
+  actions: { flexDirection: "row", marginTop: 24, gap: 12 },                              // botões
+  button: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }, // botão
+  buttonText: { fontSize: 14, fontWeight: "700" },                                        // texto do botão
 });

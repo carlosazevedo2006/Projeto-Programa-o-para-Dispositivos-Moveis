@@ -1,104 +1,81 @@
-// Importa React e o hook useState para gerir o estado local do input
+// src/screens/SinglePlayer.tsx
+
+// Importa React e hook de estado
 import React, { useState } from "react";
+// Importa componentes do React Native
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
+// Importa tema global
+import { useTheme } from "../theme/Theme";
 
-// Importa componentes básicos do React Native
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
-
-// Declaração das propriedades (props) que este componente recebe do App
-type SinglePlayerProps = {
-  onStart: (name: string) => void; // função chamada ao iniciar o jogo (envia o nome do jogador)
-  onBack: () => void;              // função chamada ao voltar para o menu
-  darkMode: boolean;               // indica se o modo escuro está ativo
+// Props esperadas
+type Props = {
+  onStart: () => void; // inicia o jogo
+  onBack: () => void;  // volta ao menu
 };
 
-// Componente principal da tela "Single Player"
-export default function SinglePlayer({ onStart, onBack, darkMode }: SinglePlayerProps) {
-  // Estado local para armazenar o nome do jogador
-  const [player, setPlayer] = useState("");
+// Componente do ecrã de nome para singleplayer
+export default function SinglePlayer({ onStart, onBack }: Props) {
+  // Obtém a paleta de cores do tema atual
+  const { colors } = useTheme();
 
-  // Define cores dinâmicas com base no tema atual (claro ou escuro)
-  const backgroundColor = darkMode ? "#121212" : "#FFFFFF"; // fundo
-  const textColor = darkMode ? "#FFFFFF" : "#000000";       // texto
-  const inputBg = darkMode ? "#1E1E1E" : "#F0F0F0";         // campo de input
-  const buttonBg = darkMode ? "#444" : "#007bff";           // botão
+  // Estado para o nome do jogador
+  const [name, setName] = useState("");
 
-  // Função chamada ao pressionar o botão "Começar"
+  // Handler para iniciar
   const handleStart = () => {
-    const trimmed = player.trim(); // remove espaços extras
-    if (!trimmed) return;          // se o campo estiver vazio, não faz nada
-    onStart(trimmed);              // envia o nome para o componente principal (App.tsx)
+    // Caso queiras validar: if (!name.trim()) return;
+    onStart();
   };
 
-  // Renderização da interface do utilizador
+  // Render com ajuste ao teclado no iOS
   return (
-    // Container principal com cor de fundo dependente do tema
-    <View style={[styles.container, { backgroundColor }]}>
-      {/* Botão de voltar no canto superior esquerdo */}
-      <TouchableOpacity onPress={onBack} style={styles.backButton}>
-        <Text style={[styles.backText, { color: textColor }]}>← Voltar</Text>
-      </TouchableOpacity>
+    <KeyboardAvoidingView
+      behavior={Platform.select({ ios: "padding", android: undefined })}
+      style={[styles.flex, { backgroundColor: colors.background }]}
+    >
+      <View style={styles.container}>
+        <Text style={[styles.title, { color: colors.text }]}>Jogador</Text>
 
-      {/* Título da tela */}
-      <Text style={[styles.title, { color: textColor }]}>Single Player</Text>
+        <Text style={[styles.label, { color: colors.text }]}>O teu nome</Text>
+        <TextInput
+          value={name}
+          onChangeText={setName}
+          placeholder="Escreve o teu nome"
+          placeholderTextColor={colors.muted}
+          style={[
+            styles.input,
+            { color: colors.text, backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        />
 
-      {/* Campo de texto para digitar o nome */}
-      <TextInput
-        style={[styles.input, { backgroundColor: inputBg, color: textColor }]}
-        placeholder="O teu nome"
-        placeholderTextColor={darkMode ? "#AAA" : "#555"} // muda cor do placeholder conforme o tema
-        value={player}                  // valor atual do input
-        onChangeText={setPlayer}        // atualiza estado quando o utilizador digita
-      />
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={onBack}
+          >
+            <Text style={[styles.buttonText, { color: colors.text }]}>Voltar</Text>
+          </TouchableOpacity>
 
-      {/* Botão para começar o jogo */}
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: buttonBg }]}
-        onPress={handleStart}
-      >
-        <Text style={styles.buttonText}>Começar</Text>
-      </TouchableOpacity>
-    </View>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleStart}
+          >
+            <Text style={[styles.buttonText, { color: colors.text }]}>Começar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
-// -----------------------------------------------------------------------------
-// Estilos da interface
-// -----------------------------------------------------------------------------
+// Estilos
 const styles = StyleSheet.create({
-  container: {
-    flex: 1, // ocupa todo o ecrã
-    justifyContent: "center", // centra verticalmente
-    alignItems: "center", // centra horizontalmente
-    padding: 24, // espaçamento interno
-  },
-  backButton: {
-    position: "absolute", // fixa o botão no topo
-    top: 40,
-    left: 20,
-  },
-  backText: {
-    fontSize: 18,
-  },
-  title: {
-    fontSize: 28, // título grande
-    fontWeight: "bold", // negrito
-    marginBottom: 20, // espaço abaixo do título
-  },
-  input: {
-    width: "80%", // largura do campo
-    padding: 12, // altura
-    borderRadius: 8, // cantos arredondados
-    marginBottom: 20, // espaço abaixo
-  },
-  button: {
-    width: "60%",
-    padding: 12,
-    borderRadius: 10,
-  },
-  buttonText: {
-    color: "#fff", // texto branco no botão
-    textAlign: "center", // centraliza texto
-    fontWeight: "bold",
-    fontSize: 16,
-  },
+  flex: { flex: 1 },                              // ocupa ecrã todo
+  container: { flex: 1, padding: 16, justifyContent: "center" }, // layout centralizado
+  title: { fontSize: 22, fontWeight: "700", marginBottom: 16 },  // título
+  label: { fontSize: 14, marginBottom: 6 },                       // rótulo
+  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, marginBottom: 16 }, // input
+  actions: { flexDirection: "row", gap: 12, marginTop: 8 },       // linha de botões
+  button: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }, // botão
+  buttonText: { fontSize: 14, fontWeight: "700" },                // texto do botão
 });

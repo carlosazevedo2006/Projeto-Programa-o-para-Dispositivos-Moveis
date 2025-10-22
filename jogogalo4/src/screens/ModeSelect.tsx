@@ -1,97 +1,91 @@
-// Importa React (para JSX e lógica de componente)
-import React from "react";
-// Importa componentes básicos do React Native
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+// src/screens/ModeSelect.tsx
 
-// Declaração do tipo das propriedades (props) recebidas do App
+// Importa React
+import React from "react";
+// Importa componentes do React Native
+import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
+// Importa o hook de tema para aplicar cores globais
+import { useTheme } from "../theme/Theme";
+
+// Define a tipagem das propriedades esperadas
 type ModeSelectProps = {
-  onChoose: (mode: "single" | "multi") => void; // Função que escolhe o modo de jogo
-  darkMode: boolean;                            // Indica se o modo escuro está ativo
-  onToggleTheme: () => void;                    // Função que alterna entre claro e escuro
+  onChoose?: (mode: "single" | "multi") => void; // callback para escolher modo
 };
 
-// Componente principal da tela de seleção de modo
-export default function ModeSelect({
-  onChoose,       // função chamada ao clicar em "single" ou "multi"
-  darkMode,       // estado do tema atual
-  onToggleTheme,  // função para alternar o tema
-}: ModeSelectProps) {
-  // Define cores de fundo, texto e botões com base no tema ativo
-  const background = darkMode ? "#121212" : "#FFFFFF"; // fundo escuro ou claro
-  const textColor = darkMode ? "#FFFFFF" : "#000000";  // cor do texto
-  const buttonColor = darkMode ? "#444" : "#007bff";   // cor dos botões
+// Componente de seleção de modo
+export default function ModeSelect({ onChoose }: ModeSelectProps) {
+  // Obtém as cores do tema global
+  const { colors } = useTheme();
 
-  // Renderização da interface do menu
+  // Handler para modo single
+  const handleSingle = () => onChoose?.("single");
+  // Handler para modo multi
+  const handleMulti = () => onChoose?.("multi");
+
+  // Interface do ecrã
   return (
-    <View style={[styles.container, { backgroundColor: background }]}>
-      {/* Título principal */}
-      <Text style={[styles.title, { color: textColor }]}>
+    <View
+      // Aplica a cor de fundo do tema
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      {/* Título sempre dentro de <Text> */}
+      <Text style={[styles.title, { color: colors.text }]}>
         Escolhe o modo de jogo
       </Text>
 
-      {/* Botão para jogar sozinho */}
+      {/* Botão para "Um jogador" */}
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: buttonColor }]}
-        onPress={() => onChoose("single")} // ao clicar, muda o modo para single
+        style={[
+          styles.button,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+        onPress={handleSingle}
       >
-        <Text style={styles.buttonText}>Jogar Sozinho</Text>
+        <Text style={[styles.buttonText, { color: colors.text }]}>
+          Um jogador
+        </Text>
       </TouchableOpacity>
 
-      {/* Botão para jogar a dois (multiplayer local) */}
+      {/* Botão para "Dois jogadores" */}
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: buttonColor }]}
-        onPress={() => onChoose("multi")} // ao clicar, muda o modo para multi
+        style={[
+          styles.button,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+        onPress={handleMulti}
       >
-        <Text style={styles.buttonText}>Multiplayer Local</Text>
-      </TouchableOpacity>
-
-      {/* Botão adicional para alternar o tema (claro/escuro) */}
-      <TouchableOpacity
-        style={[styles.toggle, { borderColor: textColor }]} // muda cor da borda conforme tema
-        onPress={onToggleTheme} // alterna o tema ao clicar
-      >
-        <Text style={[styles.toggleText, { color: textColor }]}>
-          {darkMode ? "Modo Claro" : "Modo Escuro"} {/* texto muda conforme tema atual */}
+        <Text style={[styles.buttonText, { color: colors.text }]}>
+          Dois jogadores
         </Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-// -----------------------------------------------------------------------------
-// Estilos visuais do ecrã
-// -----------------------------------------------------------------------------
+// Estilos minimalistas
 const styles = StyleSheet.create({
   container: {
-    flex: 1,                      // ocupa todo o ecrã
-    justifyContent: "center",     // centra verticalmente
-    alignItems: "center",         // centra horizontalmente
-    padding: 24,                  // espaçamento interno
+    flex: 1,                 // ocupa toda a tela
+    alignItems: "center",    // centraliza horizontalmente
+    justifyContent: "center",// centraliza verticalmente
+    padding: 16,             // espaçamento interno
   },
   title: {
-    fontSize: 22,                 // tamanho do título
-    fontWeight: "bold",           // negrito
-    marginBottom: 30,             // espaço abaixo do título
+    fontSize: 20,            // tamanho do título
+    fontWeight: "700",       // peso do título
+    marginBottom: 24,        // espaço abaixo do título
   },
   button: {
-    width: "70%",                 // largura dos botões
-    padding: 15,                  // altura dos botões
-    borderRadius: 10,             // cantos arredondados
-    marginBottom: 15,             // espaço entre botões
+    borderWidth: 1,          // borda do botão
+    borderRadius: 10,        // cantos arredondados
+    paddingHorizontal: 16,   // espaçamento interno lateral
+    paddingVertical: 12,     // espaçamento interno vertical
+    marginVertical: 8,       // espaço entre botões
+    minWidth: 200,           // largura mínima do botão
+    alignItems: "center",    // centraliza o texto
   },
   buttonText: {
-    color: "#fff",                // texto branco dentro dos botões
-    textAlign: "center",          // centraliza texto
-    fontWeight: "bold",           // negrito
-  },
-  toggle: {
-    marginTop: 30,                // distância do topo
-    borderWidth: 1,               // contorno visível
-    padding: 10,                  // espaçamento interno
-    borderRadius: 10,             // cantos arredondados
-  },
-  toggleText: {
-    fontSize: 16,                 // tamanho do texto
-    textAlign: "center",          // centraliza
+    fontSize: 16,            // tamanho do texto do botão
+    fontWeight: "600",       // peso do texto do botão
   },
 });
