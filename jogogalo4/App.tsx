@@ -1,166 +1,222 @@
 // App.tsx
 
-// Importa React e hooks
-import React, { useState, useEffect, useCallback } from "react";
-// Provider de áreas seguras (notch, barra de estado)
-import { SafeAreaProvider } from "react-native-safe-area-context";
+// Importa React e hooks essenciais
+import React, { useState, useEffect, useCallback } from "react"; // useState para estados, useEffect para efeitos, useCallback para funções estáveis
+// Provider para lidar com áreas seguras (notch, barra de estado)
+import { SafeAreaProvider } from "react-native-safe-area-context"; // garante layout correto em dispositivos com notch
 // Componentes básicos do React Native
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native"; // View para containers e StyleSheet para estilos
 
 // Telas do projeto
-import SplashScreen from "./src/screens/SplashScreen";   // ecrã inicial (aceita só onDone)
-import ModeSelect from "./src/screens/ModeSelect";       // seleção de modo
-import SinglePlayer from "./src/screens/SinglePlayer";   // escolha de X ou O
-import PlayerSelect from "./src/screens/PlayerSelect";   // dois jogadores (tema aplicado)
-import Game from "./src/screens/Game";                   // jogo (com bot e fix de loop)
+import SplashScreen from "./src/screens/SplashScreen";   // ecrã inicial, aceita apenas onDone
+import ModeSelect from "./src/screens/ModeSelect";       // ecrã de seleção de modo (single ou multi)
+import SinglePlayer from "./src/screens/SinglePlayer";   // ecrã para escolher X ou O no singleplayer
+import PlayerSelect from "./src/screens/PlayerSelect";   // ecrã de dois jogadores (aplica tema)
+import Game from "./src/screens/Game";                   // ecrã do jogo, com bot e callbacks
 
 // Componentes auxiliares
-import SettingsButton from "./src/components/SettingsButton"; // botão ⚙
-import SettingsModal from "./src/components/SettingsModal";   // modal de definições
+import SettingsButton from "./src/components/SettingsButton"; // botão de definições fixo no canto inferior esquerdo
+import SettingsModal from "./src/components/SettingsModal";   // modal de definições (tema, stats, reset)
+import ResultModal from "./src/components/ResultModal";       // modal reutilizável para mostrar resultado do jogo
 
-// Estatísticas com normalização e persistência
-import StatsScreen, { loadStats, saveStats, Stats } from "./src/screens/StatsScreen";
+// Estatísticas persistidas e normalizadas
+import StatsScreen, { loadStats, saveStats, Stats } from "./src/screens/StatsScreen"; // tela de estatísticas e helpers
 
 // Tema global
-import { ThemeProvider, useTheme } from "./src/theme/Theme";
+import { ThemeProvider, useTheme } from "./src/theme/Theme"; // provider e hook para paleta de cores
 
-// Alias para evitar conflitos de tipagem nas props do Game
-const GameComponent: any = Game;
+// Alias para evitar conflitos de tipagem caso Game não declare todas as novas props
+const GameComponent: any = Game; // permite passar props extras sem erro de tipo
 
 // Componente interno que consome o tema global
 function AppInner() {
-  // Navegação simples por estado
-  const [stage, setStage] = useState<"splash" | "mode" | "single" | "multi" | "game" | "stats">("splash");
-  // Modal de definições
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  // Estatísticas globais
-  const [stats, setStats] = useState<Stats>({ wins: 0, draws: 0, losses: 0 });
-  // Força remontagem do Game (reiniciar)
-  const [gameKey, setGameKey] = useState(0);
-  // Se o jogo é single (ativa bot)
-  const [isSingle, setIsSingle] = useState(false);
-  // Símbolo escolhido pelo humano no single
-  const [humanMark, setHumanMark] = useState<"X" | "O">("X");
+  // Estado de navegação simples por etapas
+  const [stage, setStage] = useState<"splash" | "mode" | "single" | "multi" | "game" | "stats">("splash"); // controla qual ecrã mostrar
+  // Estado do modal de definições
+  const [settingsOpen, setSettingsOpen] = useState(false); // controla visibilidade do modal de definições
+  // Estado de estatísticas globais
+  const [stats, setStats] = useState<Stats>({ wins: 0, draws: 0, losses: 0 }); // vitórias, empates, derrotas
+  // Chave para forçar remontagem do Game (útil para reset rápido)
+  const [gameKey, setGameKey] = useState(0); // incrementa para reiniciar o componente Game
+  // Indica se o jogo atual é singleplayer (ativa o bot)
+  const [isSingle, setIsSingle] = useState(false); // true para single, false para multi
+  // Símbolo escolhido pelo humano no singleplayer
+  const [humanMark, setHumanMark] = useState<"X" | "O">("X"); // por omissão "X"
 
-  // Tema global
-  const { colors, toggleDarkMode } = useTheme();
+  // Estado do modal de resultado
+  const [resultOpen, setResultOpen] = useState(false); // controla visibilidade do ResultModal
+  const [resultTitle, setResultTitle] = useState(""); // título mostrado no ResultModal
+  const [resultMessage, setResultMessage] = useState<string | undefined>(undefined); // mensagem secundária
 
-  // Carrega e normaliza estatísticas ao arrancar
+  // Usa o tema global (cores e alternador)
+  const { colors, toggleDarkMode } = useTheme(); // cores do tema atual e função para alternar o modo
+
+  // Carrega estatísticas ao arrancar a aplicação
   useEffect(() => {
     (async () => {
-      const s = await loadStats(); // lê do storage e normaliza
-      await saveStats(s);          // regrava normalizado para “sanear”
-      setStats(s);                 // aplica no estado
+      const s = await loadStats(); // lê do AsyncStorage e normaliza
+      await saveStats(s);          // regrava normalizado para sanear valores antigos
+      setStats(s);                 // aplica no estado local
     })();
-  }, []);
+  }, []); // executa apenas uma vez ao montar
 
-  // Persiste estatísticas em qualquer alteração
+  // Persiste estatísticas sempre que mudarem
   useEffect(() => {
-    saveStats(stats);
-  }, [stats]);
+    saveStats(stats); // guarda no AsyncStorage
+  }, [stats]); // dispara quando stats muda
 
-  // Incrementos numéricos estáveis (evita concatenação de strings)
+  // Funções de incremento com coação numérica e identidade estável
   const addWin = useCallback(() => {
-    setStats((s) => ({ ...s, wins: (Number(s.wins) || 0) + 1 }));
-  }, []);
+    setStats((s) => ({ ...s, wins: (Number(s.wins) || 0) + 1 })); // soma numérica em vitórias
+  }, []); // sem dependências
   const addDraw = useCallback(() => {
-    setStats((s) => ({ ...s, draws: (Number(s.draws) || 0) + 1 }));
-  }, []);
+    setStats((s) => ({ ...s, draws: (Number(s.draws) || 0) + 1 })); // soma numérica em empates
+  }, []); // sem dependências
   const addLoss = useCallback(() => {
-    setStats((s) => ({ ...s, losses: (Number(s.losses) || 0) + 1 }));
-  }, []);
+    setStats((s) => ({ ...s, losses: (Number(s.losses) || 0) + 1 })); // soma numérica em derrotas
+  }, []); // sem dependências
 
-  // Reinicia o jogo atual
-  const resetGame = () => setGameKey((k) => k + 1);
+  // Reinicia o jogo atual forçando remontagem do componente Game
+  const resetGame = () => setGameKey((k) => k + 1); // incrementa a key para reiniciar o tabuleiro
 
-  // O bot usa o símbolo oposto ao do humano
-  const botMark: "X" | "O" = humanMark === "X" ? "O" : "X";
+  // Calcula a marca do bot com base na escolha do humano
+  const botMark: "X" | "O" = humanMark === "X" ? "O" : "X"; // bot usa o símbolo oposto
 
-  // Render principal
+  // Constrói título e mensagem do ResultModal ao fim do jogo e abre a janela
+  const showResult = (winner: "X" | "O" | null) => {
+    if (isSingle) {
+      // Caso singleplayer
+      if (winner === null) {
+        setResultTitle("Empate");                      // empate no single
+        setResultMessage(undefined);                   // sem mensagem extra
+      } else if (winner === humanMark) {
+        setResultTitle("Ganhaste");                    // humano venceu
+        setResultMessage("O bot perdeu");              // mensagem secundária
+      } else {
+        setResultTitle("O bot ganhou");                // bot venceu
+        setResultMessage("Perdeste esta partida");     // mensagem secundária
+      }
+      setResultOpen(true);                             // abre o modal
+      return;                                          // termina aqui
+    }
+    // Caso multiplayer (Jogador 1 = X, Jogador 2 = O por convenção)
+    if (winner === null) {
+      setResultTitle("Empate");                        // empate no multi
+      setResultMessage(undefined);                     // sem mensagem extra
+    } else if (winner === "X") {
+      setResultTitle("Vitória do Jogador 1");          // X venceu
+      setResultMessage("Jogador 2 perdeu");            // mensagem secundária
+    } else {
+      setResultTitle("Vitória do Jogador 2");          // O venceu
+      setResultMessage("Jogador 1 perdeu");            // mensagem secundária
+    }
+    setResultOpen(true);                               // abre o modal
+  }; // fim de showResult
+
+  // Render principal do app
   return (
+    // Provider de áreas seguras
     <SafeAreaProvider>
+      {/* Container raiz com cor de fundo do tema */}
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* SplashScreen: CORRIGIDO — só passamos onDone, pois SplashProps não tem onContinue */}
+        {/* Ecrã inicial: apenas onDone é suportado pelo SplashScreen */}
         {stage === "splash" && (
-          <SplashScreen onDone={() => setStage("mode")} />
+          <SplashScreen onDone={() => setStage("mode")} /> // ao terminar o splash, vai para o menu de modos
         )}
 
-        {/* Seleção de modo: single ativa bot e leva à escolha X/O; multi leva a dois jogadores */}
+        {/* Seleção de modo: define single ou multi e navega para a tela correspondente */}
         {stage === "mode" && (
           <ModeSelect
             onChoose={(mode) => {
               if (mode === "single") {
-                setIsSingle(true);
-                setStage("single");    // ecrã para escolher X ou O
+                setIsSingle(true);     // ativa bot
+                setStage("single");    // vai escolher X ou O
               } else {
-                setIsSingle(false);
-                setStage("multi");     // ecrã de dois jogadores
+                setIsSingle(false);    // desativa bot
+                setStage("multi");     // vai para dois jogadores
               }
             }}
           />
         )}
 
-        {/* Singleplayer: escolher X ou O. Ao escolher, entra logo no jogo. */}
+        {/* Singleplayer: escolher X ou O. Ao escolher, entra diretamente no jogo. */}
         {stage === "single" && (
           <SinglePlayer
             onChooseMark={(m) => {
-              setHumanMark(m);         // guarda símbolo do humano
+              setHumanMark(m);         // guarda a escolha do humano
               setStage("game");        // navega para o jogo
             }}
-            onBack={() => setStage("mode")}
+            onBack={() => setStage("mode")} // voltar ao menu inicial
           />
         )}
 
-        {/* Multiplayer: dois jogadores (tema escuro aplicado) */}
+        {/* Multiplayer: ecrã de dois jogadores (tema já aplicado) */}
         {stage === "multi" && (
           <PlayerSelect
-            onStart={() => setStage("game")}
-            onBack={() => setStage("mode")}
+            onStart={() => setStage("game")} // inicia o jogo a partir do multi
+            onBack={() => setStage("mode")}  // volta ao menu inicial
           />
         )}
 
-        {/* Jogo: passa botEnabled, botMark e humanMark */}
+        {/* Ecrã de jogo: passa callbacks, marcações e o novo onGameEnd para abrir o modal de resultado */}
         {stage === "game" && (
           <GameComponent
-            key={gameKey}
-            onWin={addWin}
-            onDraw={addDraw}
-            onLoss={addLoss}
-            onExit={() => setStage("mode")}
-            botEnabled={isSingle}
-            botMark={botMark}
-            humanMark={humanMark}
+            key={gameKey}                  // força reset ao mudar a key
+            onWin={addWin}                 // incrementa vitórias (usado no single)
+            onDraw={addDraw}               // incrementa empates
+            onLoss={addLoss}               // incrementa derrotas (usado no single)
+            onExit={() => setStage("mode")} // sair do jogo volta ao menu
+            botEnabled={isSingle}          // ativa ou não o bot
+            botMark={botMark}              // símbolo do bot
+            humanMark={humanMark}          // símbolo do humano
+            onGameEnd={showResult}         // callback para abrir a janela de resultado
           />
         )}
 
-        {/* Estatísticas persistidas */}
+        {/* Ecrã de estatísticas com valores persistidos e normalizados */}
         {stage === "stats" && (
-          <StatsScreen onBack={() => setStage("mode")} />
+          <StatsScreen onBack={() => setStage("mode")} /> // voltar ao menu
         )}
 
-        {/* Botão de definições no canto inferior esquerdo */}
-        <SettingsButton onPress={() => setSettingsOpen(true)} />
+        {/* Botão de definições persistente no canto inferior esquerdo */}
+        <SettingsButton onPress={() => setSettingsOpen(true)} /> {/* abre o modal de definições */}
 
-        {/* Modal de definições: alternar tema, abrir stats e reiniciar jogo */}
+        {/* Modal de definições: alterna tema, mostra stats e reinicia jogo */}
         <SettingsModal
-          visible={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-          onToggleTheme={toggleDarkMode}
-          onResetGame={() => {
-            setSettingsOpen(false);
-            resetGame();
+          visible={settingsOpen}                 // controla visibilidade
+          onClose={() => setSettingsOpen(false)} // fecha o modal
+          onToggleTheme={toggleDarkMode}         // alterna entre claro e escuro
+          onResetGame={() => {                   // reinicia a partida atual
+            setSettingsOpen(false);              // fecha o modal
+            resetGame();                         // força remontagem do Game
           }}
-          onOpenStats={() => {
-            setSettingsOpen(false);
-            setStage("stats");
+          onOpenStats={() => {                   // abre a tela de estatísticas
+            setSettingsOpen(false);              // fecha o modal
+            setStage("stats");                   // navega para stats
           }}
+        />
+
+        {/* Janela de resultado do jogo (single e multi) */}
+        <ResultModal
+          visible={resultOpen}                    // mostra/esconde janela
+          title={resultTitle}                     // título calculado
+          message={resultMessage}                 // mensagem secundária opcional
+          onPlayAgain={() => {                    // ação "Jogar de novo"
+            setResultOpen(false);                 // fecha a janela
+            setGameKey((k) => k + 1);             // reinicia o componente Game
+          }}
+          onExitToMenu={() => {                   // ação "Voltar ao menu"
+            setResultOpen(false);                 // fecha a janela
+            setStage("mode");                     // vai para o menu principal
+          }}
+          onClose={() => setResultOpen(false)}    // fechar sem mais ação
         />
       </View>
     </SafeAreaProvider>
   );
-}
+} // fim de AppInner
 
-// Exporta App envolto no ThemeProvider (tema global em toda a UI)
+// Exporta App com o ThemeProvider envolvendo o AppInner
 export default function App() {
   return (
     <ThemeProvider>
@@ -169,10 +225,10 @@ export default function App() {
   );
 }
 
-// Estilos de base
+// Estilos básicos do container raiz
 const styles = StyleSheet.create({
   container: {
-    flex: 1,                  // ocupa o ecrã todo
-    justifyContent: "center", // alinhamento vertical padrão
+    flex: 1,                  // ocupa o ecrã inteiro
+    justifyContent: "center", // alinha verticalmente por padrão
   },
 });
