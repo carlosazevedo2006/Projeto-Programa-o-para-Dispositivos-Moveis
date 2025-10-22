@@ -9,13 +9,14 @@ import { useTheme } from "../theme/Theme";
 
 // Define as props aceitas pelo componente de jogo
 type Props = {
-  onWin?: () => void;             // callback quando o humano vence
-  onDraw?: () => void;            // callback quando há empate
-  onLoss?: () => void;            // callback quando o humano perde (bot vence)
-  onExit?: () => void;            // callback ao sair do jogo
-  botEnabled?: boolean;           // ativa o bot no singleplayer
-  botMark?: "X" | "O";            // símbolo usado pelo bot
-  humanMark?: "X" | "O";          // símbolo do humano (opcional; se não vier é inferido)
+  onWin?: () => void;                             // callback quando o humano vence (single)
+  onDraw?: () => void;                            // callback quando há empate
+  onLoss?: () => void;                            // callback quando o humano perde (single)
+  onExit?: () => void;                            // callback ao sair do jogo
+  onGameEnd?: (winner: "X" | "O" | null) => void; // novo: notifica símbolo vencedor ou null no empate
+  botEnabled?: boolean;                           // ativa o bot no singleplayer
+  botMark?: "X" | "O";                            // símbolo usado pelo bot
+  humanMark?: "X" | "O";                          // símbolo do humano (opcional; se não vier é inferido)
 };
 
 // Função utilitária: cria um tabuleiro 3x3 vazio
@@ -28,7 +29,6 @@ const makeEmptyBoard = () =>
 
 // Função utilitária: calcula o vencedor do tabuleiro
 function getWinner(b: (null | "X" | "O")[][]): "X" | "O" | null {
-  // Lista de todas as combinações vencedoras
   const lines: (("X" | "O" | null)[])[] = [
     [b[0][0], b[0][1], b[0][2]],
     [b[1][0], b[1][1], b[1][2]],
@@ -39,24 +39,19 @@ function getWinner(b: (null | "X" | "O")[][]): "X" | "O" | null {
     [b[0][0], b[1][1], b[2][2]],
     [b[0][2], b[1][1], b[2][0]],
   ];
-  // Varre todas as linhas em busca de três iguais
   for (const [a, b1, c] of lines) {
     if (a && a === b1 && b1 === c) return a;
   }
-  // Se não encontrou vencedor, retorna null
   return null;
 }
 
-// Função utilitária: estratégia simples do bot (primeira casa livre)
+// Estratégia simples do bot: primeira casa livre
 function chooseBotMove(board: (null | "X" | "O")[][]): [number, number] | null {
-  // Percorre todas as células do tabuleiro
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
-      // Se a célula estiver vazia, retorna a posição
       if (board[r][c] === null) return [r, c];
     }
   }
-  // Se não houver células livres, retorna null
   return null;
 }
 
@@ -66,118 +61,120 @@ export default function Game({
   onDraw,
   onLoss,
   onExit,
-  botEnabled = false,   // por omissão o bot fica desligado
-  botMark = "O",        // por omissão o bot joga como "O"
-  humanMark,            // pode ser passado; se não vier, é inferido
+  onGameEnd,                // novo callback para multiplayer e lógica genérica
+  botEnabled = false,
+  botMark = "O",
+  humanMark,
 }: Props) {
   // Obtém as cores do tema atual
   const { colors } = useTheme();
 
   // Estado do tabuleiro, sempre com valor inicial válido
   const [board, setBoard] = useState<(null | "X" | "O")[][]>(makeEmptyBoard());
-  // Estado de quem tem a vez; por convenção, "X" começa
+  // Estado de quem tem a vez
   const [turn, setTurn] = useState<"X" | "O">("X");
 
-  // Resolução da marca do humano:
-  // - se vier via prop, usa-a;
-  // - senão, infere como o oposto do bot.
+  // Resolve a marca do humano: usa prop se existir, senão infere
   const effectiveHumanMark: "X" | "O" =
     humanMark ?? (botMark === "X" ? "O" : "X");
 
-  // Guarda refs para os callbacks, evitando loops por mudança de identidade
+  // Refs para callbacks, evitando loops por mudança de identidade
   const onWinRef = useRef(onWin);
   const onDrawRef = useRef(onDraw);
   const onLossRef = useRef(onLoss);
+  const onGameEndRef = useRef(onGameEnd);
 
   // Mantém as refs sincronizadas quando as props mudarem
-  useEffect(() => { onWinRef.current  = onWin;  }, [onWin]);
+  useEffect(() => { onWinRef.current = onWin; }, [onWin]);
   useEffect(() => { onDrawRef.current = onDraw; }, [onDraw]);
   useEffect(() => { onLossRef.current = onLoss; }, [onLoss]);
+  useEffect(() => { onGameEndRef.current = onGameEnd; }, [onGameEnd]);
 
-  // Estado derivado: vencedor atual e se o tabuleiro está completo
+  // Estado derivado: vencedor e se o tabuleiro está cheio
   const winner = useMemo(() => getWinner(board), [board]);
-  const isFull = useMemo(
-    () => board.every((row) => row.every((c) => c !== null)),
-    [board]
-  );
+  const isFull = useMemo(() => board.every((row) => row.every((c) => c !== null)), [board]);
 
-  // Efeito de término do jogo: depende apenas de winner e isFull
+  // Efeito de término do jogo: aciona callbacks uma única vez por resultado
+  const endNotifiedRef = useRef<null | "X" | "O" | "draw">(null); // guarda último fim notificado
   useEffect(() => {
+    // Se ainda não terminou, limpa a memória de notificação e sai
+    if (!winner && !isFull) {
+      endNotifiedRef.current = null;
+      return;
+    }
+
+    // Determina uma chave de fim para não notificar em duplicado
+    const endKey: "X" | "O" | "draw" = winner ? winner : "draw";
+    if (endNotifiedRef.current === endKey) return; // já notificou este fim
+
+    // Marca como notificado
+    endNotifiedRef.current = endKey;
+
+    // Notificação genérica para o App: quem venceu ou null se empate
+    if (onGameEndRef.current) {
+      onGameEndRef.current(winner ?? null);
+    }
+
+    // Callbacks legacy para singleplayer (opcionais)
     if (winner === effectiveHumanMark) {
       onWinRef.current && onWinRef.current();
     } else if (winner === botMark) {
       onLossRef.current && onLossRef.current();
-    } else if (!winner && isFull) {
+    } else if (!winner) {
       onDrawRef.current && onDrawRef.current();
     }
   }, [winner, isFull, effectiveHumanMark, botMark]);
 
-  // Ref que evita que o bot tome decisões em duplicado enquanto aguarda timeout
+  // Evita decisões múltiplas do bot enquanto há timeout pendente
   const botThinkingRef = useRef(false);
 
-  // Efeito que executa a jogada do bot quando for a vez dele
+  // Efeito: jogada do bot quando é a vez dele
   useEffect(() => {
-    // Se o bot não estiver ativo, sai
     if (!botEnabled) return;
-    // Se já terminou a partida, sai
     if (winner || isFull) return;
-    // Se não for a vez do bot, sai
     if (turn !== botMark) return;
-    // Se já existe um timeout pendente do bot, sai
     if (botThinkingRef.current) return;
 
-    // Marca que o bot está a "pensar"
     botThinkingRef.current = true;
-
-    // Cria um pequeno atraso para a jogada do bot
     const t = setTimeout(() => {
-      // Escolhe uma jogada válida
       const move = chooseBotMove(board);
       if (move) {
-        const [r, c] = move;                     // desestrutura linha e coluna
-        const next = board.map((row) => row.slice()); // clona o tabuleiro
-        if (next[r][c] === null) {               // valida célula livre
-          next[r][c] = botMark;                  // marca jogada do bot
-          setBoard(next);                        // atualiza estado
-          setTurn(effectiveHumanMark);           // passa a vez ao humano
+        const [r, c] = move;
+        const next = board.map((row) => row.slice());
+        if (next[r][c] === null) {
+          next[r][c] = botMark;
+          setBoard(next);
+          setTurn(effectiveHumanMark);
         }
       }
-      // Liberta a flag de pensamento do bot
       botThinkingRef.current = false;
     }, 250);
 
-    // Cleanup do timeout se o componente desmontar
     return () => clearTimeout(t);
   }, [botEnabled, turn, botMark, effectiveHumanMark, board, winner, isFull]);
 
-  // Handler quando o humano toca numa célula
+  // Handler de toque numa célula pelo humano
   const handleCell = (r: number, c: number) => {
-    // Se já terminou a partida, ignora
     if (winner) return;
-    // Se há bot e não é a vez do humano, ignora
     if (botEnabled && turn !== effectiveHumanMark) return;
 
-    // Clona o tabuleiro para edição imutável
     const next = board.map((row) => row.slice());
-    // Se a célula já estiver ocupada, ignora
     if (next[r][c] !== null) return;
 
-    // Marca a jogada do humano
     next[r][c] = effectiveHumanMark;
-    // Atualiza o tabuleiro
     setBoard(next);
-    // Alterna o turno: se houver bot, passa para o bot; senão alterna normal
     setTurn(botEnabled ? botMark : (effectiveHumanMark === "X" ? "O" : "X"));
   };
 
-  // Handler para reiniciar a partida
+  // Reinicia a partida
   const handleReset = () => {
-    setBoard(makeEmptyBoard());  // recria tabuleiro vazio
-    setTurn("X");                // por convenção, "X" começa
-    botThinkingRef.current = false; // limpa flag do bot
+    setBoard(makeEmptyBoard());
+    setTurn("X");
+    botThinkingRef.current = false;
+    endNotifiedRef.current = null;
   };
 
-  // Handler para sair do jogo com confirmação
+  // Confirmação de saída
   const handleExit = () => {
     Alert.alert("Sair", "Queres sair do jogo?", [
       { text: "Cancelar", style: "cancel" },
@@ -188,13 +185,15 @@ export default function Game({
   // Render do ecrã
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Título do ecrã */}
+      {/* Título */}
       <Text style={[styles.title, { color: colors.text }]}>Jogo do Galo</Text>
 
-      {/* Linha informativa com os papéis de cada um */}
-      <Text style={[styles.roles, { color: colors.text }]}>
-        Tu: {effectiveHumanMark}   •   Bot: {botMark}
-      </Text>
+      {/* Linha informativa com papéis quando há bot */}
+      {botEnabled ? (
+        <Text style={[styles.roles, { color: colors.text }]}>
+          Tu: {effectiveHumanMark}   •   Bot: {botMark}
+        </Text>
+      ) : null}
 
       {/* Informação de vez, vencedor ou empate */}
       {!winner && !isFull && (
@@ -217,15 +216,15 @@ export default function Game({
           <View key={r} style={styles.row}>
             {row.map((cell, c) => (
               <TouchableOpacity
-                key={`${r}-${c}`}                               // chave única por célula
+                key={`${r}-${c}`}
                 style={[
                   styles.cell,
                   { borderColor: colors.border, backgroundColor: colors.card },
                 ]}
-                onPress={() => handleCell(r, c)}                // trata o toque
+                onPress={() => handleCell(r, c)}
               >
                 <Text style={[styles.cellText, { color: colors.text }]}>
-                  {cell ?? ""}                                  // mostra X, O ou vazio
+                  {cell ?? ""}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -233,7 +232,7 @@ export default function Game({
         ))}
       </View>
 
-      {/* Botões de ação */}
+      {/* Ações básicas */}
       <View style={styles.actions}>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -253,59 +252,28 @@ export default function Game({
   );
 }
 
-// Estilos do ecrã
+// Estilos
 const styles = StyleSheet.create({
   container: {
-    flex: 1,                       // ocupa ecrã todo
-    padding: 16,                   // espaçamento interno
-    alignItems: "center",          // centra horizontalmente
-    justifyContent: "center",      // centra verticalmente
+    flex: 1, padding: 16, alignItems: "center", justifyContent: "center",
   },
   title: {
-    fontSize: 22,                  // tamanho do título
-    fontWeight: "700",             // destaque do título
-    marginBottom: 4,               // espaço abaixo
+    fontSize: 22, fontWeight: "700", marginBottom: 4,
   },
   roles: {
-    fontSize: 14,                  // tamanho da linha "Tu/Bot"
-    marginBottom: 8,               // espaço abaixo
+    fontSize: 14, marginBottom: 8,
   },
   info: {
-    fontSize: 16,                  // tamanho da mensagem de estado
-    marginBottom: 12,              // espaço abaixo
+    fontSize: 16, marginBottom: 12,
   },
-  board: {
-    // wrapper do tabuleiro
-  },
-  row: {
-    flexDirection: "row",          // três células lado a lado
-  },
+  board: { },
+  row: { flexDirection: "row" },
   cell: {
-    width: 84,                     // largura da célula
-    height: 84,                    // altura da célula
-    borderWidth: 1,                // borda visível
-    alignItems: "center",          // centra conteúdo na horizontal
-    justifyContent: "center",      // centra conteúdo na vertical
-    margin: 2,                     // espaço entre células
-    borderRadius: 10,              // cantos arredondados
+    width: 84, height: 84, borderWidth: 1, alignItems: "center",
+    justifyContent: "center", margin: 2, borderRadius: 10,
   },
-  cellText: {
-    fontSize: 28,                  // tamanho do X/O
-    fontWeight: "800",             // peso do X/O
-  },
-  actions: {
-    flexDirection: "row",          // botões lado a lado
-    marginTop: 24,                 // espaço acima dos botões
-    gap: 12,                       // espaço entre botões
-  },
-  button: {
-    borderWidth: 1,                // borda do botão
-    borderRadius: 10,              // cantos arredondados
-    paddingHorizontal: 16,         // espaçamento horizontal interno
-    paddingVertical: 10,           // espaçamento vertical interno
-  },
-  buttonText: {
-    fontSize: 14,                  // tamanho do texto do botão
-    fontWeight: "700",             // peso do texto do botão
-  },
+  cellText: { fontSize: 28, fontWeight: "800" },
+  actions: { flexDirection: "row", marginTop: 24, gap: 12 },
+  button: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
+  buttonText: { fontSize: 14, fontWeight: "700" },
 });
