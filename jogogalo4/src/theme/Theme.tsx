@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Define a estrutura da paleta de cores usada em toda a UI
 export type Palette = {
+  primary: ColorValue | undefined;
   background: string; // cor de fundo principal da aplicação
   text: string;       // cor de texto principal
   card: string;       // cor de cartões/painéis/inputs

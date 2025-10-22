@@ -2,7 +2,7 @@
 
 // Importa React e hooks essenciais
 import React, { useState, useEffect, useCallback } from "react"; // useState para estados, useEffect para efeitos, useCallback para funções estáveis
-// Provider para lidar com áreas seguras (notch, barra de estado)
+// Provider para áreas seguras (notch, barra de estado)
 import { SafeAreaProvider } from "react-native-safe-area-context"; // garante layout correto em dispositivos com notch
 // Componentes básicos do React Native
 import { View, StyleSheet } from "react-native"; // View para containers e StyleSheet para estilos
@@ -10,7 +10,7 @@ import { View, StyleSheet } from "react-native"; // View para containers e Style
 // Telas do projeto
 import SplashScreen from "./src/screens/SplashScreen";   // ecrã inicial, aceita apenas onDone
 import ModeSelect from "./src/screens/ModeSelect";       // ecrã de seleção de modo (single ou multi)
-import SinglePlayer from "./src/screens/SinglePlayer";   // ecrã para escolher X ou O no singleplayer
+import SinglePlayer from "./src/screens/SinglePlayer";   // ecrã para escolher X/O e dificuldade
 import PlayerSelect from "./src/screens/PlayerSelect";   // ecrã de dois jogadores (aplica tema)
 import Game from "./src/screens/Game";                   // ecrã do jogo, com bot e callbacks
 
@@ -28,6 +28,9 @@ import { ThemeProvider, useTheme } from "./src/theme/Theme"; // provider e hook 
 // Alias para evitar conflitos de tipagem caso Game não declare todas as novas props
 const GameComponent: any = Game; // permite passar props extras sem erro de tipo
 
+// Tipo de dificuldade do bot
+export type BotDifficulty = "easy" | "medium" | "hard"; // três níveis de dificuldade
+
 // Componente interno que consome o tema global
 function AppInner() {
   // Estado de navegação simples por etapas
@@ -42,6 +45,8 @@ function AppInner() {
   const [isSingle, setIsSingle] = useState(false); // true para single, false para multi
   // Símbolo escolhido pelo humano no singleplayer
   const [humanMark, setHumanMark] = useState<"X" | "O">("X"); // por omissão "X"
+  // Dificuldade do bot no singleplayer
+  const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("medium"); // padrão "medium"
 
   // Estado do modal de resultado
   const [resultOpen, setResultOpen] = useState(false); // controla visibilidade do ResultModal
@@ -130,7 +135,7 @@ function AppInner() {
             onChoose={(mode) => {
               if (mode === "single") {
                 setIsSingle(true);     // ativa bot
-                setStage("single");    // vai escolher X ou O
+                setStage("single");    // vai escolher X/O e dificuldade
               } else {
                 setIsSingle(false);    // desativa bot
                 setStage("multi");     // vai para dois jogadores
@@ -139,14 +144,15 @@ function AppInner() {
           />
         )}
 
-        {/* Singleplayer: escolher X ou O. Ao escolher, entra diretamente no jogo. */}
+        {/* Singleplayer: escolher X/O e dificuldade. Ao confirmar, entra no jogo. */}
         {stage === "single" && (
           <SinglePlayer
-            onChooseMark={(m) => {
-              setHumanMark(m);         // guarda a escolha do humano
-              setStage("game");        // navega para o jogo
+            onChoose={(payload) => {
+              setHumanMark(payload.mark);          // guarda a escolha do humano (X ou O)
+              setBotDifficulty(payload.difficulty);// guarda a dificuldade escolhida
+              setStage("game");                    // navega para o jogo
             }}
-            onBack={() => setStage("mode")} // voltar ao menu inicial
+            onBack={() => setStage("mode")}        // voltar ao menu inicial
           />
         )}
 
@@ -158,7 +164,7 @@ function AppInner() {
           />
         )}
 
-        {/* Ecrã de jogo: passa callbacks, marcações e o novo onGameEnd para abrir o modal de resultado */}
+        {/* Ecrã de jogo: passa callbacks, marcas, dificuldade e onGameEnd */}
         {stage === "game" && (
           <GameComponent
             key={gameKey}                  // força reset ao mudar a key
@@ -169,6 +175,7 @@ function AppInner() {
             botEnabled={isSingle}          // ativa ou não o bot
             botMark={botMark}              // símbolo do bot
             humanMark={humanMark}          // símbolo do humano
+            botDifficulty={botDifficulty}  // passa a dificuldade escolhida
             onGameEnd={showResult}         // callback para abrir a janela de resultado
           />
         )}
