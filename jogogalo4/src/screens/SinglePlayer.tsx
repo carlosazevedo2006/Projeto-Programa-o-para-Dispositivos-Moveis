@@ -3,79 +3,140 @@
 // Importa React e hook de estado
 import React, { useState } from "react";
 // Importa componentes do React Native
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 // Importa tema global
 import { useTheme } from "../theme/Theme";
 
-// Props esperadas
+// Define as props que este ecrã expõe
 type Props = {
-  onStart: () => void; // inicia o jogo
-  onBack: () => void;  // volta ao menu
+  onChooseMark: (mark: "X" | "O") => void; // chamado quando o utilizador escolhe X ou O
+  onBack: () => void;                      // voltar ao menu anterior
 };
 
-// Componente do ecrã de nome para singleplayer
-export default function SinglePlayer({ onStart, onBack }: Props) {
-  // Obtém a paleta de cores do tema atual
+// Ecrã de configuração do singleplayer: escolher ser X ou O
+export default function SinglePlayer({ onChooseMark, onBack }: Props) {
+  // Obtém paleta de cores do tema atual
   const { colors } = useTheme();
 
-  // Estado para o nome do jogador
-  const [name, setName] = useState("");
+  // Estado local para destacar visualmente a seleção atual
+  const [selected, setSelected] = useState<"X" | "O" | null>(null);
 
-  // Handler para iniciar
-  const handleStart = () => {
-    // Caso queiras validar: if (!name.trim()) return;
-    onStart();
+  // Handler para escolher o símbolo
+  const choose = (m: "X" | "O") => {
+    setSelected(m);      // atualiza destaque imediato no UI
+    onChooseMark(m);     // informa o App da escolha e segue o fluxo do jogo
   };
 
-  // Render com ajuste ao teclado no iOS
+  // Interface: texto explicativo e dois cartões de escolha
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.select({ ios: "padding", android: undefined })}
-      style={[styles.flex, { backgroundColor: colors.background }]}
-    >
-      <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.text }]}>Jogador</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Título do ecrã */}
+      <Text style={[styles.title, { color: colors.text }]}>Escolhe o teu símbolo</Text>
 
-        <Text style={[styles.label, { color: colors.text }]}>O teu nome</Text>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="Escreve o teu nome"
-          placeholderTextColor={colors.muted}
+      {/* Explicação da convenção de quem começa */}
+      <Text style={[styles.subtitle, { color: colors.text }]}>
+        X começa o jogo. Se escolheres O, o bot (X) joga primeiro.
+      </Text>
+
+      {/* Área das opções */}
+      <View style={styles.row}>
+        {/* Opção: ser X */}
+        <TouchableOpacity
+          onPress={() => choose("X")}
           style={[
-            styles.input,
-            { color: colors.text, backgroundColor: colors.card, borderColor: colors.border },
+            styles.card,
+            { backgroundColor: colors.card, borderColor: colors.border },
+            selected === "X" && { borderColor: "#4f8cff" }, // realce simples
           ]}
-        />
+          accessibilityRole="button"
+          accessibilityLabel="Escolher X"
+        >
+          <Text style={[styles.mark, { color: colors.text }]}>X</Text>
+          <Text style={[styles.caption, { color: colors.text }]}>Cruzes</Text>
+          <Text style={[styles.note, { color: colors.muted }]}>Começas primeiro</Text>
+        </TouchableOpacity>
 
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={onBack}
-          >
-            <Text style={[styles.buttonText, { color: colors.text }]}>Voltar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={handleStart}
-          >
-            <Text style={[styles.buttonText, { color: colors.text }]}>Começar</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Opção: ser O */}
+        <TouchableOpacity
+          onPress={() => choose("O")}
+          style={[
+            styles.card,
+            { backgroundColor: colors.card, borderColor: colors.border },
+            selected === "O" && { borderColor: "#4f8cff" }, // realce simples
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Escolher O"
+        >
+          <Text style={[styles.mark, { color: colors.text }]}>O</Text>
+          <Text style={[styles.caption, { color: colors.text }]}>Círculos</Text>
+          <Text style={[styles.note, { color: colors.muted }]}>Bot começa</Text>
+        </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+
+      {/* Botão para voltar atrás, caso o utilizador mude de ideias */}
+      <TouchableOpacity
+        style={[
+          styles.backBtn,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+        onPress={onBack}
+      >
+        <Text style={[styles.backText, { color: colors.text }]}>Voltar</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
-// Estilos
+// Estilos do ecrã
 const styles = StyleSheet.create({
-  flex: { flex: 1 },                              // ocupa ecrã todo
-  container: { flex: 1, padding: 16, justifyContent: "center" }, // layout centralizado
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 16 },  // título
-  label: { fontSize: 14, marginBottom: 6 },                       // rótulo
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, marginBottom: 16 }, // input
-  actions: { flexDirection: "row", gap: 12, marginTop: 8 },       // linha de botões
-  button: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }, // botão
-  buttonText: { fontSize: 14, fontWeight: "700" },                // texto do botão
+  container: {
+    flex: 1,                 // ocupa ecrã inteiro
+    padding: 16,             // espaçamento interno
+    justifyContent: "center",// centra verticalmente
+  },
+  title: {
+    fontSize: 22,            // tamanho do título
+    fontWeight: "700",       // destaque do título
+    marginBottom: 8,         // espaçamento inferior
+  },
+  subtitle: {
+    fontSize: 14,            // tamanho do texto informativo
+    marginBottom: 16,        // espaçamento inferior
+  },
+  row: {
+    flexDirection: "row",    // opções lado a lado
+    gap: 12,                 // espaço entre cartões (se RN antigo avisar, use marginRight)
+    marginBottom: 20,        // espaçamento inferior
+  },
+  card: {
+    flex: 1,                 // divide espaço igualmente
+    borderWidth: 1,          // borda visível
+    borderRadius: 12,        // cantos arredondados
+    paddingVertical: 18,     // espaçamento interno vertical
+    alignItems: "center",    // centra conteúdo horizontalmente
+  },
+  mark: {
+    fontSize: 42,            // tamanho do X/O
+    fontWeight: "800",       // destaque do símbolo
+    marginBottom: 8,         // espaçamento inferior
+  },
+  caption: {
+    fontSize: 16,            // legenda do símbolo
+    fontWeight: "600",       // leve destaque
+  },
+  note: {
+    fontSize: 12,            // observação
+    marginTop: 4,            // espaçamento superior
+  },
+  backBtn: {
+    alignSelf: "center",     // centraliza botão
+    borderWidth: 1,          // borda
+    borderRadius: 10,        // cantos
+    paddingHorizontal: 16,   // espaçamento horizontal
+    paddingVertical: 10,     // espaçamento vertical
+  },
+  backText: {
+    fontSize: 14,            // tamanho do texto do botão
+    fontWeight: "700",       // peso do texto
+  },
 });
