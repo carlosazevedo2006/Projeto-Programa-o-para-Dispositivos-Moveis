@@ -1,143 +1,160 @@
 // src/screens/SinglePlayer.tsx
 
-// Importa React e hooks
-import React, { useState } from "react"; // useState para gerir seleção
-// Importa componentes do React Native
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native"; // UI básica
-// Importa o tema global
-import { useTheme } from "../theme/Theme"; // cores e paleta
+// Importa React e o hook de estado
+import React, { useState } from "react"; // useState para guardar seleções do utilizador
+// Importa componentes base do React Native
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native"; // UI e interações
+// Importa o tema global (para cores e modo escuro)
+import { useTheme } from "../theme/Theme"; // hook que expõe cores do tema
+// Importa o tipo de dificuldade usado no resto da app/IA
+import type { BotDifficulty } from "../ai/bot"; // "easy" | "medium" | "hard"
 
-// Tipo de dificuldade do bot
-type BotDifficulty = "easy" | "medium" | "hard"; // três níveis
-
-// Props do ecrã: devolve marca e dificuldade ao confirmar
+// Define o formato das props deste ecrã
 type Props = {
-  onChoose: (payload: { mark: "X" | "O"; difficulty: BotDifficulty }) => void; // callback com escolhas
-  onBack: () => void;                                                            // voltar ao menu anterior
+  // Será chamado quando o utilizador confirmar as escolhas
+  onChoose: (payload: { mark: "X" | "O"; difficulty: BotDifficulty }) => void;
+  // Voltar ao menu anterior
+  onBack: () => void;
 };
 
-// Ecrã para escolher símbolo e dificuldade no singleplayer
+// Componente do ecrã de configuração do singleplayer
 export default function SinglePlayer({ onChoose, onBack }: Props) {
-  // Obtém paleta de cores do tema
-  const { colors } = useTheme(); // paleta para estilos
+  // Obtém a paleta de cores atual via tema (respeita modo claro/escuro)
+  const { colors } = useTheme();
 
-  // Estado para a marca escolhida pelo humano
-  const [mark, setMark] = useState<"X" | "O" | null>(null); // null enquanto não escolhido
-  // Estado para a dificuldade escolhida
-  const [difficulty, setDifficulty] = useState<BotDifficulty>("medium"); // padrão "medium"
+  // Guarda localmente a seleção do símbolo do humano: "X" começa; "O" deixa o bot (X) começar
+  const [mark, setMark] = useState<"X" | "O" | null>(null);
+  // Guarda localmente a dificuldade: por omissão "medium"
+  const [difficulty, setDifficulty] = useState<BotDifficulty>("medium");
 
-  // Handler para confirmar escolhas e avançar para o jogo
+  // Ao carregar em "Começar", valida e envia as escolhas ao App
   const handleStart = () => {
-    if (!mark) return;                               // se não escolheu marca, não avança
-    onChoose({ mark, difficulty });                  // devolve marca e dificuldade ao App
+    // Se ainda não escolheu símbolo, não avança
+    if (!mark) return;
+    // Devolve as escolhas para o App decidir e navegar para o Jogo
+    onChoose({ mark, difficulty });
   };
 
-  // Renderização do ecrã
+  // Renderiza o ecrã
   return (
+    // Container principal com fundo segundo o tema
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Título principal */}
+      {/* Título do ecrã */}
       <Text style={[styles.title, { color: colors.text }]}>Singleplayer</Text>
 
-      {/* Informação sobre quem começa */}
+      {/* Texto explicativo da convenção de início (X começa) */}
       <Text style={[styles.subtitle, { color: colors.text }]}>
         X começa o jogo. Se escolheres O, o bot (X) joga primeiro.
       </Text>
 
-      {/* Secção de escolha da marca */}
+      {/* Secção para escolher o símbolo */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Escolhe o teu símbolo</Text>
+
+      {/* Linha com dois cartões: X e O */}
       <View style={styles.row}>
-        {/* Cartão para X */}
+        {/* Cartão para escolher X */}
         <TouchableOpacity
-          onPress={() => setMark("X")}                                                   // seleciona X
+          onPress={() => setMark("X")} // ao tocar, guarda "X" como escolha
           style={[
-            styles.card,                                                                 // base do cartão
-            { backgroundColor: colors.card, borderColor: colors.border },                // cores do tema
-            mark === "X" && { borderColor: "#4f8cff" },                                  // destaque se selecionado
+            styles.card, // base do cartão
+            { backgroundColor: colors.card, borderColor: colors.border }, // cores do tema
+            mark === "X" && { borderColor: "#4f8cff" }, // realce quando selecionado
           ]}
-          accessibilityRole="button"                                                     // acessibilidade
-          accessibilityLabel="Escolher X"                                                // descrição
+          accessibilityRole="button" // semântica de botão
+          accessibilityLabel="Escolher X" // etiqueta de acessibilidade
         >
-          <Text style={[styles.mark, { color: colors.text }]}>X</Text>                   // símbolo
-          <Text style={[styles.caption, { color: colors.text }]}>Cruzes</Text>           // legenda
-          <Text style={[styles.note, { color: colors.muted }]}>Começas primeiro</Text>   // observação
+          {/* Símbolo grande */}
+          <Text style={[styles.mark, { color: colors.text }]}>X</Text>
+          {/* Legendas */}
+          <Text style={[styles.caption, { color: colors.text }]}>Cruzes</Text>
+          <Text style={[styles.note, { color: colors.muted }]}>Começas primeiro</Text>
         </TouchableOpacity>
 
-        {/* Cartão para O */}
+        {/* Cartão para escolher O */}
         <TouchableOpacity
-          onPress={() => setMark("O")}                                                   // seleciona O
+          onPress={() => setMark("O")} // ao tocar, guarda "O" como escolha
           style={[
-            styles.card,                                                                 // base do cartão
-            { backgroundColor: colors.card, borderColor: colors.border },                // cores do tema
-            mark === "O" && { borderColor: "#4f8cff" },                                  // destaque se selecionado
+            styles.card, // base do cartão
+            { backgroundColor: colors.card, borderColor: colors.border }, // cores do tema
+            mark === "O" && { borderColor: "#4f8cff" }, // realce quando selecionado
           ]}
-          accessibilityRole="button"                                                     // acessibilidade
-          accessibilityLabel="Escolher O"                                                // descrição
+          accessibilityRole="button" // semântica de botão
+          accessibilityLabel="Escolher O" // etiqueta de acessibilidade
         >
-          <Text style={[styles.mark, { color: colors.text }]}>O</Text>                   // símbolo
-          <Text style={[styles.caption, { color: colors.text }]}>Círculos</Text>         // legenda
-          <Text style={[styles.note, { color: colors.muted }]}>Bot começa</Text>         // observação
+          {/* Símbolo grande */}
+          <Text style={[styles.mark, { color: colors.text }]}>O</Text>
+          {/* Legendas */}
+          <Text style={[styles.caption, { color: colors.text }]}>Círculos</Text>
+          <Text style={[styles.note, { color: colors.muted }]}>Bot começa</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Secção de escolha da dificuldade */}
+      {/* Secção para escolher a dificuldade do bot */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Dificuldade do bot</Text>
+
+      {/* Linha com três “pílulas” de dificuldade */}
       <View style={styles.row}>
-        {/* Botão fácil */}
+        {/* Fácil */}
         <TouchableOpacity
-          onPress={() => setDifficulty("easy")}                                           // seleciona fácil
+          onPress={() => setDifficulty("easy")} // define dificuldade como "easy"
           style={[
-            styles.pill,                                                                  // base do botão
-            { backgroundColor: colors.card, borderColor: colors.border },                 // cores do tema
-            difficulty === "easy" && { borderColor: "#4f8cff" },                          // destaque
+            styles.pill, // base do botão em forma de pílula
+            { backgroundColor: colors.card, borderColor: colors.border }, // cores do tema
+            difficulty === "easy" && { borderColor: "#4f8cff" }, // realce selecionado
           ]}
         >
-          <Text style={[styles.pillText, { color: colors.text }]}>Fácil</Text>            // rótulo
+          <Text style={[styles.pillText, { color: colors.text }]}>Fácil</Text>
         </TouchableOpacity>
 
-        {/* Botão médio */}
+        {/* Médio */}
         <TouchableOpacity
-          onPress={() => setDifficulty("medium")}                                         // seleciona médio
+          onPress={() => setDifficulty("medium")} // define dificuldade como "medium"
           style={[
-            styles.pill,                                                                  // base do botão
-            { backgroundColor: colors.card, borderColor: colors.border },                 // cores do tema
-            difficulty === "medium" && { borderColor: "#4f8cff" },                        // destaque
+            styles.pill,
+            { backgroundColor: colors.card, borderColor: colors.border },
+            difficulty === "medium" && { borderColor: "#4f8cff" },
           ]}
         >
-          <Text style={[styles.pillText, { color: colors.text }]}>Médio</Text>            // rótulo
+          <Text style={[styles.pillText, { color: colors.text }]}>Médio</Text>
         </TouchableOpacity>
 
-        {/* Botão difícil */}
+        {/* Difícil */}
         <TouchableOpacity
-          onPress={() => setDifficulty("hard")}                                           // seleciona difícil
+          onPress={() => setDifficulty("hard")} // define dificuldade como "hard"
           style={[
-            styles.pill,                                                                  // base do botão
-            { backgroundColor: colors.card, borderColor: colors.border },                 // cores do tema
-            difficulty === "hard" && { borderColor: "#4f8cff" },                          // destaque
+            styles.pill,
+            { backgroundColor: colors.card, borderColor: colors.border },
+            difficulty === "hard" && { borderColor: "#4f8cff" },
           ]}
         >
-          <Text style={[styles.pillText, { color: colors.text }]}>Difícil</Text>          // rótulo
+          <Text style={[styles.pillText, { color: colors.text }]}>Difícil</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Ações: voltar e começar */}
+      {/* Ações no fundo: Voltar e Começar */}
       <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]} // botão voltar
-          onPress={onBack}                                                                      // volta ao menu
-        >
-          <Text style={[styles.buttonText, { color: colors.text }]}>Voltar</Text>               // rótulo
-        </TouchableOpacity>
-
+        {/* Botão Voltar */}
         <TouchableOpacity
           style={[
-            styles.button,                                                                       // botão começar
-            { backgroundColor: colors.card, borderColor: colors.border },                        // cores
-            !mark && { opacity: 0.5 },                                                           // desativa visualmente sem marca
+            styles.button, // estilo base de botão
+            { backgroundColor: colors.card, borderColor: colors.border }, // cores do tema
           ]}
-          onPress={handleStart}                                                                  // confirma escolhas
-          disabled={!mark}                                                                       // desabilita sem marca
+          onPress={onBack} // ao tocar, volta ao menu de modos
         >
-          <Text style={[styles.buttonText, { color: colors.text }]}>Começar</Text>               // rótulo
+          <Text style={[styles.buttonText, { color: colors.text }]}>Voltar</Text>
+        </TouchableOpacity>
+
+        {/* Botão Começar (desativado enquanto não escolher símbolo) */}
+        <TouchableOpacity
+          style={[
+            styles.button,
+            { backgroundColor: colors.card, borderColor: colors.border },
+            !mark && { opacity: 0.5 }, // feedback visual quando desativado
+          ]}
+          onPress={handleStart} // confirma e segue para o jogo
+          disabled={!mark} // bloqueia interação sem símbolo escolhido
+        >
+          <Text style={[styles.buttonText, { color: colors.text }]}>Começar</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -146,74 +163,88 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
 
 // Estilos do ecrã
 const styles = StyleSheet.create({
+  // Container raiz
   container: {
-    flex: 1,                 // ocupa ecrã inteiro
+    flex: 1,                 // ocupa todo o ecrã
     padding: 16,             // espaçamento interno
     justifyContent: "center",// centra verticalmente
   },
+  // Título principal
   title: {
     fontSize: 22,            // tamanho do título
-    fontWeight: "700",       // destaque do título
-    marginBottom: 8,         // espaçamento inferior
-  },
-  subtitle: {
-    fontSize: 14,            // tamanho do texto informativo
-    marginBottom: 16,        // espaçamento inferior
-  },
-  sectionTitle: {
-    fontSize: 16,            // título de secção
     fontWeight: "700",       // destaque
-    marginBottom: 8,         // espaçamento inferior
+    marginBottom: 8,         // espaço abaixo
   },
+  // Texto explicativo
+  subtitle: {
+    fontSize: 14,            // tamanho do texto
+    marginBottom: 16,        // espaço abaixo
+  },
+  // Título de secções ("Escolhe o teu símbolo", "Dificuldade…")
+  sectionTitle: {
+    fontSize: 16,            // tamanho do título de secção
+    fontWeight: "700",       // destaque
+    marginBottom: 8,         // espaço abaixo
+  },
+  // Linha genérica com elementos lado a lado
   row: {
-    flexDirection: "row",    // elementos lado a lado
-    gap: 12,                 // espaçamento entre elementos
-    marginBottom: 16,        // espaçamento inferior do bloco
+    flexDirection: "row",    // coloca filhos na horizontal
+    gap: 12,                 // espaço entre elementos (se RN não suportar, substituir por margens)
+    marginBottom: 16,        // espaço abaixo desta linha
   },
+  // Cartões de seleção de símbolo
   card: {
-    flex: 1,                 // divide espaço igualmente
+    flex: 1,                 // divide o espaço igualmente (X e O)
     borderWidth: 1,          // borda visível
     borderRadius: 12,        // cantos arredondados
     paddingVertical: 18,     // espaçamento interno vertical
-    alignItems: "center",    // centra conteúdo horizontalmente
+    alignItems: "center",    // centra conteúdo na horizontal
   },
+  // Símbolo X/O grande
   mark: {
     fontSize: 42,            // tamanho do X/O
-    fontWeight: "800",       // destaque do símbolo
-    marginBottom: 8,         // espaçamento inferior
+    fontWeight: "800",       // destaque
+    marginBottom: 8,         // espaço abaixo
   },
+  // Legenda abaixo do símbolo
   caption: {
-    fontSize: 16,            // legenda do símbolo
+    fontSize: 16,            // tamanho do texto
     fontWeight: "600",       // leve destaque
   },
+  // Nota informativa (quem começa)
   note: {
-    fontSize: 12,            // observação
-    marginTop: 4,            // espaçamento superior
+    fontSize: 12,            // tamanho pequeno
+    marginTop: 4,            // espaço acima
   },
+  // Botão tipo “pílula” para dificuldades
   pill: {
-    flex: 1,                 // cada botão ocupa um terço da linha
+    flex: 1,                 // cada pílula ocupa um terço da linha
     borderWidth: 1,          // borda
-    borderRadius: 999,       // formato arredondado tipo pílula
-    paddingVertical: 10,     // espaçamento interno vertical
+    borderRadius: 999,       // formato totalmente arredondado
+    paddingVertical: 10,     // espaçamento vertical
     alignItems: "center",    // centra rótulo
   },
+  // Texto dentro das pílulas
   pillText: {
-    fontSize: 14,            // tamanho do texto do botão
+    fontSize: 14,            // tamanho do texto
     fontWeight: "700",       // destaque
   },
+  // Área das ações finais
   actions: {
     flexDirection: "row",    // botões lado a lado
     gap: 12,                 // espaço entre botões
     marginTop: 8,            // espaço acima
   },
+  // Botão base
   button: {
-    borderWidth: 1,          // borda do botão
+    borderWidth: 1,          // borda
     borderRadius: 10,        // cantos arredondados
     paddingHorizontal: 16,   // espaçamento horizontal interno
     paddingVertical: 10,     // espaçamento vertical interno
   },
+  // Texto dos botões
   buttonText: {
-    fontSize: 14,            // tamanho do texto do botão
-    fontWeight: "700",       // peso do texto
+    fontSize: 14,            // tamanho do texto
+    fontWeight: "700",       // peso
   },
 });

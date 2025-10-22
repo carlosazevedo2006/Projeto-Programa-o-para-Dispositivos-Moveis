@@ -1,201 +1,177 @@
 // src/screens/Game.tsx
 
-// Importa React e hooks
-import React, { useState, useEffect, useMemo, useRef } from "react"; // hooks para estado, efeitos e memorização
+// Importa React e hooks de estado/efeitos/memoização/refs
+import React, { useState, useEffect, useMemo, useRef } from "react";
 // Importa componentes base do React Native
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native"; // UI e alertas
-// Importa o tema global
-import { useTheme } from "../theme/Theme"; // hook para paleta de cores
-// Importa a IA do bot já separada
-import {
-  BotDifficulty,           // tipo de dificuldade
-  Board,                   // tipo de tabuleiro
-  chooseBotMoveByDifficulty,// escolhe jogada pela dificuldade
-  getWinner,               // calcula vencedor
-} from "../ai/bot";        // módulo do bot
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+// Importa o tema global (para cores coerentes com modo claro/escuro)
+import { useTheme } from "../theme/Theme";
 
-// Define as props aceitas pelo componente de jogo
+// Importa tipos e utilitários do tabuleiro
+import { Board, makeEmptyBoard, isBoardFull, cloneBoard } from "../utils/board";
+// Importa a lógica do bot (inclui getWinner)
+import { BotDifficulty, chooseBotMoveByDifficulty, getWinner } from "../ai/bot";
+
+// Define as props aceites pelo ecrã de jogo
 type Props = {
   onWin?: () => void;                             // callback quando o humano vence (single)
   onDraw?: () => void;                            // callback quando há empate
   onLoss?: () => void;                            // callback quando o humano perde (single)
   onExit?: () => void;                            // callback ao sair do jogo
-  onGameEnd?: (winner: "X" | "O" | null) => void; // callback genérico para multiplayer ou single
-  botEnabled?: boolean;                           // ativa o bot no singleplayer
+  onGameEnd?: (winner: "X" | "O" | null) => void; // callback genérico no fim do jogo
+  botEnabled?: boolean;                           // ativa/desativa bot (single vs multi)
   botMark?: "X" | "O";                            // símbolo usado pelo bot
   humanMark?: "X" | "O";                          // símbolo do humano
-  botDifficulty?: BotDifficulty;                  // dificuldade do bot
+  botDifficulty?: BotDifficulty;                  // dificuldade do bot: easy | medium | hard
 };
-
-// Cria um tabuleiro 3x3 vazio
-const makeEmptyBoard = () =>
-  [
-    [null, null, null],
-    [null, null, null],
-    [null, null, null],
-  ] as Board; // usa o tipo Board do módulo do bot
 
 // Componente principal do jogo
 export default function Game({
-  onWin,                         // callback de vitória do humano (single)
-  onDraw,                        // callback de empate (single e multi)
-  onLoss,                        // callback de derrota do humano (single)
-  onExit,                        // callback para sair do jogo
-  onGameEnd,                     // callback genérico de fim de jogo (símbolo vencedor ou null)
-  botEnabled = false,            // liga/desliga bot
-  botMark = "O",                 // símbolo do bot
-  humanMark = "X",               // símbolo do humano
-  botDifficulty = "medium",      // dificuldade do bot
+  onWin,
+  onDraw,
+  onLoss,
+  onExit,
+  onGameEnd,
+  botEnabled = false,      // por omissão, sem bot (modo multi)
+  botMark = "O",           // por omissão bot é "O"
+  humanMark = "X",         // por omissão humano é "X"
+  botDifficulty = "medium" // dificuldade padrão
 }: Props) {
-  // Usa a paleta de cores do tema atual
-  const { colors } = useTheme(); // recebe as cores
+  // Acede às cores do tema atual
+  const { colors } = useTheme();
 
-  // Estado do tabuleiro
-  const [board, setBoard] = useState<Board>(makeEmptyBoard()); // estado 3x3
-  // Estado de quem tem a vez (X começa por convenção)
-  const [turn, setTurn] = useState<"X" | "O">("X"); // "X" começa sempre
+  // Estado do tabuleiro (3x3)
+  const [board, setBoard] = useState<Board>(makeEmptyBoard());
+  // Estado do turno (por convenção, "X" começa)
+  const [turn, setTurn] = useState<"X" | "O">("X");
 
-  // Resolve quem é o humano e o bot
-  const effectiveHumanMark: "X" | "O" = humanMark;  // símbolo do humano
-  const effectiveBotMark: "X" | "O" = botMark;      // símbolo do bot
+  // Refs para manter identidades estáveis dos callbacks e evitar re-render loops
+  const onWinRef = useRef(onWin);
+  const onDrawRef = useRef(onDraw);
+  const onLossRef = useRef(onLoss);
+  const onGameEndRef = useRef(onGameEnd);
 
-  // Refs para callbacks, para evitar re-trigger por mudança de identidade
-  const onWinRef = useRef(onWin);                 // referência onWin
-  const onDrawRef = useRef(onDraw);               // referência onDraw
-  const onLossRef = useRef(onLoss);               // referência onLoss
-  const onGameEndRef = useRef(onGameEnd);         // referência onGameEnd
+  // Mantém as refs sincronizadas quando as props mudam
+  useEffect(() => { onWinRef.current = onWin; }, [onWin]);
+  useEffect(() => { onDrawRef.current = onDraw; }, [onDraw]);
+  useEffect(() => { onLossRef.current = onLoss; }, [onLoss]);
+  useEffect(() => { onGameEndRef.current = onGameEnd; }, [onGameEnd]);
 
-  // Mantém as refs sincronizadas quando as props mudarem
-  useEffect(() => { onWinRef.current = onWin; }, [onWin]);               // sincroniza onWin
-  useEffect(() => { onDrawRef.current = onDraw; }, [onDraw]);            // sincroniza onDraw
-  useEffect(() => { onLossRef.current = onLoss; }, [onLoss]);            // sincroniza onLoss
-  useEffect(() => { onGameEndRef.current = onGameEnd; }, [onGameEnd]);   // sincroniza onGameEnd
+  // Calcula vencedor atual e se o tabuleiro está cheio (derivados do estado)
+  const winner = useMemo(() => getWinner(board), [board]);
+  const isFull = useMemo(() => isBoardFull(board), [board]);
 
-  // Calcula o vencedor atual do tabuleiro
-  const winner = useMemo(() => getWinner(board), [board]);               // vencedor derivado
-  // Verifica se o tabuleiro está cheio
-  const isFull = useMemo(() => board.every(row => row.every(c => c !== null)), [board]); // cheio?
+  // Guarda o último estado final notificado para não duplicar eventos de fim
+  const endNotifiedRef = useRef<null | "X" | "O" | "draw">(null);
 
-  // Evita notificar o fim várias vezes
-  const endNotifiedRef = useRef<null | "X" | "O" | "draw">(null); // último fim notificado
-
-  // Efeito: trata o fim do jogo (vitória, derrota ou empate)
+  // Efeito: quando a partida termina, notifica uma única vez
   useEffect(() => {
-    // Se ainda não acabou, limpa a marca e sai
+    // Se ainda não terminou, limpa a marca e sai
     if (!winner && !isFull) {
-      endNotifiedRef.current = null; // limpa
-      return;                        // sai
+      endNotifiedRef.current = null;
+      return;
     }
 
-    // Chave única do fim: símbolo vencedor ou "draw"
-    const endKey: "X" | "O" | "draw" = winner ? winner : "draw"; // chave do estado final
-    // Se já notificou este resultado, não repete
-    if (endNotifiedRef.current === endKey) return; // evita duplicado
-    // Marca como notificado
+    // Cria chave do estado final (vencedor ou empate)
+    const endKey: "X" | "O" | "draw" = winner ? winner : "draw";
+    // Evita notificação duplicada do mesmo fim
+    if (endNotifiedRef.current === endKey) return;
     endNotifiedRef.current = endKey;
 
     // Notifica o App com o símbolo vencedor (ou null no empate)
-    if (onGameEndRef.current) onGameEndRef.current(winner ?? null); // chama onGameEnd
+    onGameEndRef.current?.(winner ?? null);
 
-    // Callbacks legacy para estatísticas em singleplayer
-    if (winner === effectiveHumanMark) {
-      onWinRef.current && onWinRef.current();   // humano venceu
-    } else if (winner === effectiveBotMark) {
-      onLossRef.current && onLossRef.current(); // humano perdeu
-    } else if (!winner) {
-      onDrawRef.current && onDrawRef.current(); // empate
-    }
-  }, [winner, isFull, effectiveHumanMark, effectiveBotMark]); // dependências mínimas
+    // Callbacks de estatísticas (mantidos para singleplayer)
+    if (winner === humanMark) onWinRef.current?.();
+    else if (winner === botMark) onLossRef.current?.();
+    else if (!winner) onDrawRef.current?.();
+  }, [winner, isFull, humanMark, botMark]);
 
-  // Flag para impedir que o bot jogue múltiplas vezes durante o timeout
-  const botThinkingRef = useRef(false); // controla execução do bot
+  // Flag para impedir múltiplas jogadas do bot durante o timeout
+  const botThinkingRef = useRef(false);
 
-  // Efeito: faz o bot jogar quando é a vez dele
+  // Efeito: executa a jogada do bot quando é a vez dele
   useEffect(() => {
-    // Sem bot ativo, não faz nada
-    if (!botEnabled) return;
-    // Se o jogo já terminou, não faz nada
-    if (winner || isFull) return;
-    // Se não é a vez do bot, não faz nada
-    if (turn !== botMark) return;
-    // Se já há uma jogada pendente, não faz nada
-    if (botThinkingRef.current) return;
+    // Guarda de segurança: só prossegue se todas as condições permitirem
+    if (!botEnabled || winner || isFull || turn !== botMark || botThinkingRef.current) return;
 
-    // Marca que o bot está "a pensar"
+    // Marca que o bot está a "pensar" para não duplicar timeouts
     botThinkingRef.current = true;
 
-    // Pequeno atraso para fluidez da jogada do bot
-    const t = setTimeout(() => {
-      // Pede ao módulo do bot a melhor jogada para a dificuldade atual
-      const move = chooseBotMoveByDifficulty(board, botDifficulty, effectiveBotMark, effectiveHumanMark);
-      // Se existe jogada válida
+    // Tipagem segura do setTimeout (evita sublinhado em TS com Node/DOM)
+    const t: ReturnType<typeof setTimeout> = setTimeout(() => {
+      // Escolhe a jogada consoante a dificuldade e marcas atuais
+      const move = chooseBotMoveByDifficulty(board, botDifficulty, botMark, humanMark);
+
+      // Se existir jogada válida, aplica-a
       if (move) {
-        const [r, c] = move;                        // extrai coordenadas
-        const next = board.map(row => row.slice()); // clona o tabuleiro
-        if (next[r][c] === null) {                  // confere que está livre
-          next[r][c] = botMark;                     // coloca a peça do bot
-          setBoard(next);                           // aplica novo estado
-          setTurn(humanMark);                       // passa a vez ao humano
+        const [r, c] = move;
+        const next = cloneBoard(board);  // clona o tabuleiro de forma imutável
+        if (next[r][c] === null) {      // confirma que a célula ainda está livre
+          next[r][c] = botMark;         // coloca a marca do bot
+          setBoard(next);               // atualiza o tabuleiro
+          setTurn(humanMark);           // passa a vez para o humano
         }
       }
-      // Liberta a flag de pensamento
-      botThinkingRef.current = false;
-    }, 250); // atraso de 250 ms
 
-    // Cleanup do timeout caso o componente desmonte
+      // Liberta a flag depois da jogada
+      botThinkingRef.current = false;
+    }, 250); // pequeno atraso para melhor UX
+
+    // Cleanup do timeout quando o efeito é refeito/unmount (tipagem segura)
     return () => clearTimeout(t);
-  }, [botEnabled, turn, botMark, humanMark, board, winner, isFull, botDifficulty, effectiveBotMark, effectiveHumanMark]); // dependências
+  }, [botEnabled, turn, botMark, humanMark, board, winner, isFull, botDifficulty]);
 
   // Handler: humano toca numa célula
   const handleCell = (r: number, c: number) => {
-    // Ignora se já terminou
+    // Ignora se a partida já terminou
     if (winner) return;
-    // Se há bot e não é a vez do humano, ignora
+    // Com bot ativo, só deixa jogar se for a vez do humano
     if (botEnabled && turn !== humanMark) return;
 
-    // Clona o tabuleiro
-    const next = board.map(row => row.slice());
-    // Se a célula estiver ocupada, ignora
+    // Clona o tabuleiro para atualização imutável
+    const next = cloneBoard(board);
+    // Se a célula está ocupada, não faz nada
     if (next[r][c] !== null) return;
 
-    // Marca a jogada com o símbolo do turno atual
+    // Coloca a marca do jogador da vez
     next[r][c] = turn;
-    // Atualiza o estado do tabuleiro
+    // Atualiza o estado com o novo tabuleiro
     setBoard(next);
-    // Alterna o turno para o próximo símbolo
+    // Alterna o turno
     setTurn(turn === "X" ? "O" : "X");
   };
 
-  // Reinicia a partida com tabuleiro vazio
+  // Reinicia a partida (tabuleiro limpo e "X" começa)
   const handleReset = () => {
-    setBoard(makeEmptyBoard());        // cria novo tabuleiro vazio
-    setTurn("X");                      // X começa por convenção
-    botThinkingRef.current = false;    // limpa flag do bot
-    endNotifiedRef.current = null;     // limpa marca de fim anterior
+    setBoard(makeEmptyBoard());   // volta a criar 3x3 vazio
+    setTurn("X");                 // por convenção, "X" começa
+    botThinkingRef.current = false; // limpa flag do bot
+    endNotifiedRef.current = null;  // limpa marca de fim anterior
   };
 
-  // Sair do jogo com confirmação
+  // Pede confirmação para sair para o menu
   const handleExit = () => {
     Alert.alert("Sair", "Queres sair do jogo?", [
-      { text: "Cancelar", style: "cancel" },                              // não sai
+      { text: "Cancelar", style: "cancel" },                        // cancela e fica no jogo
       { text: "Sair", style: "destructive", onPress: () => onExit && onExit() }, // confirma saída
     ]);
   };
 
-  // Renderização do ecrã
+  // Render
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Título principal */}
+      {/* Título do ecrã */}
       <Text style={[styles.title, { color: colors.text }]}>Jogo do Galo</Text>
 
-      {/* Informações de papéis e dificuldade quando o bot está ativo */}
+      {/* Linha informativa quando o bot está ativo: papéis e dificuldade */}
       {botEnabled && (
         <Text style={[styles.roles, { color: colors.text }]}>
-          Tu: {effectiveHumanMark}   •   Bot: {effectiveBotMark}   •   Dificuldade: {botDifficulty}
+          Tu: {humanMark}   •   Bot: {botMark}   •   Dificuldade: {botDifficulty}
         </Text>
       )}
 
-      {/* Mensagem de estado: vez, vencedor ou empate */}
+      {/* Mensagens de estado: vez, vencedor ou empate */}
       {!winner && !isFull && (
         <Text style={[styles.info, { color: colors.text }]}>
           Vez do: {turn} {botEnabled && turn === botMark ? "(bot)" : ""}
@@ -216,15 +192,15 @@ export default function Game({
           <View key={r} style={styles.row}>
             {row.map((cell, c) => (
               <TouchableOpacity
-                key={`${r}-${c}`}                                                              // chave por célula
+                key={`${r}-${c}`} // chave única por célula
                 style={[
-                  styles.cell,                                                                  // estilo base
-                  { borderColor: colors.border, backgroundColor: colors.card },                // cores do tema
+                  styles.cell,
+                  { borderColor: colors.border, backgroundColor: colors.card },
                 ]}
-                onPress={() => handleCell(r, c)}                                               // trata toque
+                onPress={() => handleCell(r, c)} // trata toque na célula
               >
                 <Text style={[styles.cellText, { color: colors.text }]}>
-                  {cell ?? ""}                                                                 // mostra X, O ou vazio
+                  {cell ?? ""} // mostra "X", "O" ou vazio
                 </Text>
               </TouchableOpacity>
             ))}
@@ -232,20 +208,23 @@ export default function Game({
         ))}
       </View>
 
-      {/* Botões de ação */}
+      {/* Botões inferiores */}
       <View style={styles.actions}>
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]} // botão reiniciar
-          onPress={handleReset}                                                                 // reinicia partida
+          style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={handleReset}
         >
-          <Text style={[styles.buttonText, { color: colors.text }]}>Reiniciar</Text>            {/* rótulo */}
+          <Text style={[styles.buttonText, { color: colors.text }]}>Reiniciar</Text>
         </TouchableOpacity>
 
+        {/* margem esquerda manual para substituir o antigo gap */}
+        <View style={{ width: 12 }} />
+
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]} // botão sair
-          onPress={handleExit}                                                                  // confirma saída
+          style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={handleExit}
         >
-          <Text style={[styles.buttonText, { color: colors.text }]}>Sair</Text>                 {/* rótulo */}
+          <Text style={[styles.buttonText, { color: colors.text }]}>Sair</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -254,56 +233,68 @@ export default function Game({
 
 // Estilos do ecrã
 const styles = StyleSheet.create({
+  // Container raiz do ecrã
   container: {
-    flex: 1,                          // ocupa ecrã inteiro
-    padding: 16,                      // espaçamento interno
-    alignItems: "center",             // centra horizontalmente
-    justifyContent: "center",         // centra verticalmente
+    flex: 1,                // ocupa a altura toda
+    padding: 16,            // espaço interno
+    alignItems: "center",   // centra horizontalmente
+    justifyContent: "center", // centra verticalmente
   },
+  // Título do ecrã
   title: {
-    fontSize: 22,                     // tamanho do título
-    fontWeight: "700",                // destaque
-    marginBottom: 4,                  // espaço abaixo
+    fontSize: 22,           // tamanho do texto
+    fontWeight: "700",      // negrito para destaque
+    marginBottom: 4,        // espaço abaixo
   },
+  // Linha com papéis e dificuldade
   roles: {
-    fontSize: 14,                     // tamanho do texto
-    marginBottom: 8,                  // espaço abaixo
+    fontSize: 14,           // tamanho do texto
+    marginBottom: 8,        // espaço abaixo
   },
+  // Mensagens de estado (vez/vencedor/empate)
   info: {
-    fontSize: 16,                     // tamanho da mensagem
-    marginBottom: 12,                 // espaço abaixo
+    fontSize: 16,           // tamanho do texto
+    marginBottom: 12,       // espaço abaixo
   },
-  board: {                            // wrapper do tabuleiro
+  // Área do tabuleiro
+  board: {
+    // deixado vazio de propósito (podes ajustar se precisares)
   },
+  // Linha de células
   row: {
-    flexDirection: "row",             // três células lado a lado
+    flexDirection: "row",   // três células lado a lado
   },
+  // Célula individual
   cell: {
-    width: 84,                        // largura da célula
-    height: 84,                       // altura da célula
-    borderWidth: 1,                   // borda visível
-    alignItems: "center",             // centra conteúdo
-    justifyContent: "center",         // centra conteúdo
-    margin: 2,                        // espaço entre células
-    borderRadius: 10,                 // cantos arredondados
+    width: 84,              // largura
+    height: 84,             // altura
+    borderWidth: 1,         // borda visível
+    alignItems: "center",   // centra conteúdo horizontalmente
+    justifyContent: "center", // centra verticalmente
+    margin: 2,              // espaçamento entre células
+    borderRadius: 10,       // cantos arredondados
   },
+  // Texto dentro da célula (X/O)
   cellText: {
-    fontSize: 28,                     // tamanho do X/O
-    fontWeight: "800",                // peso do X/O
+    fontSize: 28,           // tamanho grande
+    fontWeight: "800",      // peso forte
   },
+  // Linha de botões inferiores
   actions: {
-    flexDirection: "row",             // botões lado a lado
-    marginTop: 24,                    // espaço acima
-    gap: 12,                          // espaço entre botões
+    flexDirection: "row",   // botões lado a lado
+    marginTop: 24,          // espaço acima
+    // sem 'gap' para evitar sublinhado em typings RN antigos
   },
+  // Botão base
   button: {
-    borderWidth: 1,                   // borda
-    borderRadius: 10,                 // cantos arredondados
-    paddingHorizontal: 16,            // espaçamento interno horizontal
-    paddingVertical: 10,              // espaçamento interno vertical
+    borderWidth: 1,         // borda
+    borderRadius: 10,       // cantos
+    paddingHorizontal: 16,  // espaço interno lateral
+    paddingVertical: 10,    // espaço interno vertical
   },
+  // Texto dos botões
   buttonText: {
-    fontSize: 14,                     // tamanho do texto
-    fontWeight: "700",                // destaque
+    fontSize: 14,           // tamanho
+    fontWeight: "700",      // destaque
   },
 });
