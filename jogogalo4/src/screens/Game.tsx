@@ -174,7 +174,11 @@ export default function Game({
     endNotifiedRef.current = null;
   };
 
+<<<<<<< HEAD
   // Confirmação de saída 
+=======
+  // Confirmação de saída
+>>>>>>> 11db5604aa86c6176e2ee474f4c98080502e8ac3
   const handleExit = () => {
     Alert.alert("Sair", "Queres sair do jogo?", [
       { text: "Cancelar", style: "cancel" },
@@ -253,7 +257,11 @@ export default function Game({
 }
 
 // Estilos
+<<<<<<< HEAD
 const styles = StyleSheet.create({ 
+=======
+const styles = StyleSheet.create({
+>>>>>>> 11db5604aa86c6176e2ee474f4c98080502e8ac3
   container: {
     flex: 1, padding: 16, alignItems: "center", justifyContent: "center",
   },
