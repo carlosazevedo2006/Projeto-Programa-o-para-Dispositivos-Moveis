@@ -30,7 +30,8 @@ export default function ModeSelect({ onChoose }: ModeSelectProps) {
     >
       {/* Título sempre dentro de <Text> */}
       <Text style={[styles.title, { color: colors.text }]}>
-        Escolhe o modo de jogo
+        Bem-vindo ao jogo Tic Tac Toe (Jogo do Galo)
+        Escolhe o modo de Jogo, tendo como opção dois modos.
       </Text>
 
       {/* Botão para "Um jogador" */}
