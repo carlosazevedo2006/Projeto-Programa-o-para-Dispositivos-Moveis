@@ -3,6 +3,7 @@ type Cell = null | "X" | "O";
 
 // -----------------------------------------------------------------------------
 // Função principal do bot, agora com dificuldade
+// Neste momento o bot ira avaliar as dificuldades, consoante a escolha do jogador
 // -----------------------------------------------------------------------------
 export const botMove = (
   board: Cell[],
