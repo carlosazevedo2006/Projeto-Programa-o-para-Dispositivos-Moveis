@@ -1,8 +1,8 @@
 // src/screens/Game.tsx
 
-// Importa React e hooks necessários
+// Importa React e hooks
 import React, { useState, useEffect, useMemo, useRef } from "react";
-// Importa componentes do React Native
+// Importa componentes base do React Native
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 // Importa o tema global
 import { useTheme } from "../theme/Theme";
@@ -13,13 +13,13 @@ type Props = {
   onDraw?: () => void;                            // callback quando há empate
   onLoss?: () => void;                            // callback quando o humano perde (single)
   onExit?: () => void;                            // callback ao sair do jogo
-  onGameEnd?: (winner: "X" | "O" | null) => void; // novo: notifica símbolo vencedor ou null no empate
+  onGameEnd?: (winner: "X" | "O" | null) => void; // callback genérico para multiplayer ou single
   botEnabled?: boolean;                           // ativa o bot no singleplayer
   botMark?: "X" | "O";                            // símbolo usado pelo bot
-  humanMark?: "X" | "O";                          // símbolo do humano (opcional; se não vier é inferido)
+  humanMark?: "X" | "O";                          // símbolo do humano
 };
 
-// Função utilitária: cria um tabuleiro 3x3 vazio
+// Função que cria um tabuleiro 3x3 vazio
 const makeEmptyBoard = () =>
   [
     [null, null, null],
@@ -27,8 +27,9 @@ const makeEmptyBoard = () =>
     [null, null, null],
   ] as (null | "X" | "O")[][];
 
-// Função utilitária: calcula o vencedor do tabuleiro
+// Função que determina o vencedor do tabuleiro
 function getWinner(b: (null | "X" | "O")[][]): "X" | "O" | null {
+  // Todas as combinações vencedoras possíveis
   const lines: (("X" | "O" | null)[])[] = [
     [b[0][0], b[0][1], b[0][2]],
     [b[1][0], b[1][1], b[1][2]],
@@ -39,13 +40,15 @@ function getWinner(b: (null | "X" | "O")[][]): "X" | "O" | null {
     [b[0][0], b[1][1], b[2][2]],
     [b[0][2], b[1][1], b[2][0]],
   ];
+
+  // Percorre as linhas e retorna o símbolo vencedor
   for (const [a, b1, c] of lines) {
     if (a && a === b1 && b1 === c) return a;
   }
-  return null;
+  return null; // caso não haja vencedor
 }
 
-// Estratégia simples do bot: primeira casa livre
+// Função simples para o bot: escolhe a primeira casa vazia
 function chooseBotMove(board: (null | "X" | "O")[][]): [number, number] | null {
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
@@ -55,130 +58,126 @@ function chooseBotMove(board: (null | "X" | "O")[][]): [number, number] | null {
   return null;
 }
 
-// Componente principal do ecrã de jogo
+// Componente principal do jogo
 export default function Game({
   onWin,
   onDraw,
   onLoss,
   onExit,
-  onGameEnd,                // novo callback para multiplayer e lógica genérica
+  onGameEnd,
   botEnabled = false,
   botMark = "O",
-  humanMark,
+  humanMark = "X",
 }: Props) {
-  // Obtém as cores do tema atual
+  // Usa o tema atual
   const { colors } = useTheme();
 
-  // Estado do tabuleiro, sempre com valor inicial válido
+  // Estado do tabuleiro
   const [board, setBoard] = useState<(null | "X" | "O")[][]>(makeEmptyBoard());
-  // Estado de quem tem a vez
+  // Estado de quem tem a vez (X começa por convenção)
   const [turn, setTurn] = useState<"X" | "O">("X");
 
-  // Resolve a marca do humano: usa prop se existir, senão infere
-  const effectiveHumanMark: "X" | "O" =
-    humanMark ?? (botMark === "X" ? "O" : "X");
+  // Resolve quem é o humano e o bot
+  const effectiveHumanMark: "X" | "O" = humanMark;
+  const effectiveBotMark: "X" | "O" = botMark;
 
-  // Refs para callbacks, evitando loops por mudança de identidade
+  // Refs para callbacks, evitando reexecuções
   const onWinRef = useRef(onWin);
   const onDrawRef = useRef(onDraw);
   const onLossRef = useRef(onLoss);
   const onGameEndRef = useRef(onGameEnd);
 
-  // Mantém as refs sincronizadas quando as props mudarem
+  // Sincroniza as refs sempre que as props mudarem
   useEffect(() => { onWinRef.current = onWin; }, [onWin]);
   useEffect(() => { onDrawRef.current = onDraw; }, [onDraw]);
   useEffect(() => { onLossRef.current = onLoss; }, [onLoss]);
   useEffect(() => { onGameEndRef.current = onGameEnd; }, [onGameEnd]);
 
-  // Estado derivado: vencedor e se o tabuleiro está cheio
+  // Calcula o vencedor e se o tabuleiro está cheio
   const winner = useMemo(() => getWinner(board), [board]);
   const isFull = useMemo(() => board.every((row) => row.every((c) => c !== null)), [board]);
 
-  // Efeito de término do jogo: aciona callbacks uma única vez por resultado
-  const endNotifiedRef = useRef<null | "X" | "O" | "draw">(null); // guarda último fim notificado
+  // Garante que só notifica o fim uma vez
+  const endNotifiedRef = useRef<null | "X" | "O" | "draw">(null);
+
+  // Efeito que trata o fim de jogo (vitória, derrota ou empate)
   useEffect(() => {
-    // Se ainda não terminou, limpa a memória de notificação e sai
     if (!winner && !isFull) {
       endNotifiedRef.current = null;
       return;
     }
 
-    // Determina uma chave de fim para não notificar em duplicado
     const endKey: "X" | "O" | "draw" = winner ? winner : "draw";
-    if (endNotifiedRef.current === endKey) return; // já notificou este fim
-
-    // Marca como notificado
+    if (endNotifiedRef.current === endKey) return;
     endNotifiedRef.current = endKey;
 
-    // Notificação genérica para o App: quem venceu ou null se empate
+    // Chama callback genérico para o App
     if (onGameEndRef.current) {
       onGameEndRef.current(winner ?? null);
     }
 
-    // Callbacks legacy para singleplayer (opcionais)
+    // Callbacks antigos (mantêm suporte ao sistema de estatísticas)
     if (winner === effectiveHumanMark) {
       onWinRef.current && onWinRef.current();
-    } else if (winner === botMark) {
+    } else if (winner === effectiveBotMark) {
       onLossRef.current && onLossRef.current();
     } else if (!winner) {
       onDrawRef.current && onDrawRef.current();
     }
-  }, [winner, isFull, effectiveHumanMark, botMark]);
+  }, [winner, isFull, effectiveHumanMark, effectiveBotMark]);
 
-  // Evita decisões múltiplas do bot enquanto há timeout pendente
+  // Evita que o bot jogue múltiplas vezes seguidas
   const botThinkingRef = useRef(false);
 
-  // Efeito: jogada do bot quando é a vez dele
+  // Efeito para fazer o bot jogar quando for a vez dele
   useEffect(() => {
-    if (!botEnabled) return;
-    if (winner || isFull) return;
-    if (turn !== botMark) return;
+    if (!botEnabled) return;          // se o bot estiver desativado, sai
+    if (winner || isFull) return;     // se o jogo terminou, sai
+    if (turn !== botMark) return;     // se não for a vez do bot, sai
     if (botThinkingRef.current) return;
 
     botThinkingRef.current = true;
+
+    // Atraso para simular "pensamento" do bot
     const t = setTimeout(() => {
-      const move = chooseBotMove(board);
+      const move = chooseBotMove(board); // escolhe jogada simples
       if (move) {
         const [r, c] = move;
         const next = board.map((row) => row.slice());
         if (next[r][c] === null) {
-          next[r][c] = botMark;
+          next[r][c] = botMark;      // coloca o símbolo do bot
           setBoard(next);
-          setTurn(effectiveHumanMark);
+          setTurn(humanMark);        // passa a vez para o humano
         }
       }
       botThinkingRef.current = false;
-    }, 250);
+    }, 300);
 
     return () => clearTimeout(t);
-  }, [botEnabled, turn, botMark, effectiveHumanMark, board, winner, isFull]);
+  }, [botEnabled, turn, botMark, humanMark, board, winner, isFull]);
 
-  // Handler de toque numa célula pelo humano
+  // Quando o humano toca numa célula
   const handleCell = (r: number, c: number) => {
-    if (winner) return;
-    if (botEnabled && turn !== effectiveHumanMark) return;
+    if (winner) return;                                 // ignora se já acabou
+    if (botEnabled && turn !== humanMark) return;       // ignora se não for a vez do humano
 
-    const next = board.map((row) => row.slice());
-    if (next[r][c] !== null) return;
+    const next = board.map((row) => row.slice());       // copia tabuleiro
+    if (next[r][c] !== null) return;                    // ignora se ocupado
 
-    next[r][c] = effectiveHumanMark;
-    setBoard(next);
-    setTurn(botEnabled ? botMark : (effectiveHumanMark === "X" ? "O" : "X"));
+    next[r][c] = turn;                                  // marca a jogada
+    setBoard(next);                                     // atualiza tabuleiro
+    setTurn(turn === "X" ? "O" : "X");                  // troca turno
   };
 
   // Reinicia a partida
   const handleReset = () => {
-    setBoard(makeEmptyBoard());
-    setTurn("X");
-    botThinkingRef.current = false;
-    endNotifiedRef.current = null;
+    setBoard(makeEmptyBoard());                         // limpa o tabuleiro
+    setTurn("X");                                       // X começa
+    botThinkingRef.current = false;                     // limpa estado do bot
+    endNotifiedRef.current = null;                      // limpa fim anterior
   };
 
-<<<<<<< HEAD
-  // Confirmação de saída 
-=======
-  // Confirmação de saída
->>>>>>> 11db5604aa86c6176e2ee474f4c98080502e8ac3
+  // Sair do jogo com confirmação
   const handleExit = () => {
     Alert.alert("Sair", "Queres sair do jogo?", [
       { text: "Cancelar", style: "cancel" },
@@ -186,20 +185,20 @@ export default function Game({
     ]);
   };
 
-  // Render do ecrã
+  // Renderização principal
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Título */}
       <Text style={[styles.title, { color: colors.text }]}>Jogo do Galo</Text>
 
-      {/* Linha informativa com papéis quando há bot */}
-      {botEnabled ? (
+      {/* Indicação de papéis no singleplayer */}
+      {botEnabled && (
         <Text style={[styles.roles, { color: colors.text }]}>
-          Tu: {effectiveHumanMark}   •   Bot: {botMark}
+          Tu: {effectiveHumanMark}   •   Bot: {effectiveBotMark}
         </Text>
-      ) : null}
+      )}
 
-      {/* Informação de vez, vencedor ou empate */}
+      {/* Estado atual do jogo */}
       {!winner && !isFull && (
         <Text style={[styles.info, { color: colors.text }]}>
           Vez do: {turn} {botEnabled && turn === botMark ? "(bot)" : ""}
@@ -214,7 +213,7 @@ export default function Game({
         <Text style={[styles.info, { color: colors.text }]}>Empate</Text>
       )}
 
-      {/* Tabuleiro 3x3 */}
+      {/* Tabuleiro */}
       <View style={styles.board}>
         {board.map((row, r) => (
           <View key={r} style={styles.row}>
@@ -236,7 +235,7 @@ export default function Game({
         ))}
       </View>
 
-      {/* Ações básicas */}
+      {/* Botões inferiores */}
       <View style={styles.actions}>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -256,32 +255,57 @@ export default function Game({
   );
 }
 
-// Estilos
-<<<<<<< HEAD
-const styles = StyleSheet.create({ 
-=======
+// Estilos do componente
 const styles = StyleSheet.create({
->>>>>>> 11db5604aa86c6176e2ee474f4c98080502e8ac3
   container: {
-    flex: 1, padding: 16, alignItems: "center", justifyContent: "center",
+    flex: 1,
+    padding: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
-    fontSize: 22, fontWeight: "700", marginBottom: 4,
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 4,
   },
   roles: {
-    fontSize: 14, marginBottom: 8,
+    fontSize: 14,
+    marginBottom: 8,
   },
   info: {
-    fontSize: 16, marginBottom: 12,
+    fontSize: 16,
+    marginBottom: 12,
   },
-  board: { },
-  row: { flexDirection: "row" },
+  board: {},
+  row: {
+    flexDirection: "row",
+  },
   cell: {
-    width: 84, height: 84, borderWidth: 1, alignItems: "center",
-    justifyContent: "center", margin: 2, borderRadius: 10,
+    width: 84,
+    height: 84,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    margin: 2,
+    borderRadius: 10,
   },
-  cellText: { fontSize: 28, fontWeight: "800" },
-  actions: { flexDirection: "row", marginTop: 24, gap: 12 },
-  button: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
-  buttonText: { fontSize: 14, fontWeight: "700" },
+  cellText: {
+    fontSize: 28,
+    fontWeight: "800",
+  },
+  actions: {
+    flexDirection: "row",
+    marginTop: 24,
+    gap: 12,
+  },
+  button: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
 });
