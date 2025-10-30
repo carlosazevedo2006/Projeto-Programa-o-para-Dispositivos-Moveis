@@ -66,7 +66,7 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
           {/* Símbolo grande */}
           <Text style={[styles.mark, { color: colors.text }]}>X</Text>
           {/* Legendas */}
-          <Text style={[styles.caption, { color: colors.text }]}>Cruzes</Text>
+          <Text style={[styles.caption, { color: colors.text }]}>Cruz</Text>
           <Text style={[styles.note, { color: colors.muted }]}>Começas primeiro</Text>
         </TouchableOpacity>
 
@@ -84,7 +84,7 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
           {/* Símbolo grande */}
           <Text style={[styles.mark, { color: colors.text }]}>O</Text>
           {/* Legendas */}
-          <Text style={[styles.caption, { color: colors.text }]}>Círculos</Text>
+          <Text style={[styles.caption, { color: colors.text }]}>Círculo</Text>
           <Text style={[styles.note, { color: colors.muted }]}>Bot começa</Text>
         </TouchableOpacity>
       </View>
