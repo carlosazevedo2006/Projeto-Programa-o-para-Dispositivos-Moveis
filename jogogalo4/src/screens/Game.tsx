@@ -41,7 +41,7 @@ export default function Game({
   botEnabled = false,
   botMark = "O",
   humanMark = "X",
-  botDifficulty = "medium",
+  botDifficulty = "Medio",
 }: Props) {
   // Acede às cores do tema global
   const { colors } = useTheme();
