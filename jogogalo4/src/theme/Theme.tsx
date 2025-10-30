@@ -2,7 +2,6 @@
 
 // Importa React e ferramentas para criar/usar contexto e memorizar valores
 import React, { createContext, useContext, useMemo, useState, ReactNode, useEffect } from "react";
-// *** CORREÇÃO ***
 // Importa o tipo 'ColorValue' do react-native
 import { ColorValue } from "react-native";
 // Importa AsyncStorage para persistir a preferência do tema entre execuções
@@ -10,32 +9,38 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Define a estrutura da paleta de cores usada em toda a UI
 export type Palette = {
-  primary: ColorValue | undefined; // Agora 'ColorValue' é reconhecido
-  background: string; 
-  text: string; 
-  card: string; 
-  border: string; 
-  muted: string; 
+  primary: ColorValue | undefined;
+  background: string;
+  text: string;
+  card: string;
+  border: string;
+  muted: string;
+  success: string;   // Nova cor para sucesso
+  error: string;     // Nova cor para erro
+  warning: string;   // Nova cor para aviso
 };
 
 // Define o formato do valor guardado no contexto do tema
 type ThemeContextValue = {
-  darkMode: boolean; 
-  toggleDarkMode: () => void; 
-  colors: Palette; 
+  darkMode: boolean;
+  toggleDarkMode: () => void;
+  colors: Palette;
 };
 
 // Cria o contexto com um valor padrão seguro (light mode)
 const ThemeContext = createContext<ThemeContextValue>({
-  darkMode: false, 
-  toggleDarkMode: () => {}, 
-  colors: { 
-    primary: undefined, // Adicionado valor 'undefined' para corresponder ao tipo
+  darkMode: false,
+  toggleDarkMode: () => {},
+  colors: {
+    primary: undefined,
     background: "#f6f7f9",
     text: "#101214",
     card: "#ffffff",
     border: "#e5e7eb",
     muted: "#6b7280",
+    success: "#4CAF50",
+    error: "#f44336",
+    warning: "#FF9800",
   },
 });
 
@@ -64,12 +69,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         // Em caso de erro, ignora e mantém o default (false)
       }
     })();
-  }, []); 
+  }, []);
 
   // Sempre que o estado 'darkMode' mudar, persiste o novo valor no AsyncStorage
   useEffect(() => {
     AsyncStorage.setItem(THEME_KEY, JSON.stringify(darkMode));
-  }, [darkMode]); 
+  }, [darkMode]);
 
   // Função que alterna o estado darkMode
   const toggleDarkMode = () => setDarkMode((v) => !v);
@@ -79,24 +84,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (darkMode) {
       // Paleta escura
       return {
-        primary: undefined, // Adicionado
-        background: "#0f1115", 
-        text: "#f2f2f3", 
-        card: "#1a1d24", 
-        border: "#2a2e36", 
-        muted: "#9ca3af", 
+        primary: "#4f8cff",
+        background: "#0f1115",
+        text: "#f2f2f3",
+        card: "#1a1d24",
+        border: "#2a2e36",
+        muted: "#9ca3af",
+        success: "#4CAF50",
+        error: "#f44336",
+        warning: "#FF9800",
       };
     }
     // Paleta clara
     return {
-      primary: undefined, // Adicionado
-      background: "#f6f7f9", 
-      text: "#101214", 
-      card: "#ffffff", 
-      border: "#e5e7eb", 
-      muted: "#6b7280", 
+      primary: "#4f8cff",
+      background: "#f6f7f9",
+      text: "#101214",
+      card: "#ffffff",
+      border: "#e5e7eb",
+      muted: "#6b7280",
+      success: "#4CAF50",
+      error: "#f44336",
+      warning: "#FF9800",
     };
-  }, [darkMode]); 
+  }, [darkMode]);
 
   // Valor a expor via contexto (memorizado)
   const value = useMemo(() => ({ darkMode, toggleDarkMode, colors }), [darkMode, colors]);
