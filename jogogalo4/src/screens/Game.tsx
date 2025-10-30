@@ -122,7 +122,7 @@ export default function Game({
   
   /**
    * Effect que trata do fim do jogo (vitória/empate)
-   * ✅ CORREÇÃO: Dependências mínimas e estáveis
+   * CORREÇÃO: Dependências mínimas e estáveis
    */
   useEffect(() => {
     // Se o jogo ainda não terminou, limpa o estado de notificação e sai
@@ -148,7 +148,7 @@ export default function Game({
       // Jogador humano venceu
       onWinRef.current?.();
       
-      // ✅ CORREÇÃO: Feedback tátil de vitória (apenas em mobile)
+      // CORREÇÃO: Feedback tátil de vitória (apenas em mobile)
       if (Platform && Platform.OS !== 'web') {
         Vibration.vibrate([0, 100, 50, 100]); // Padrão: vibra-curto-pausa-vibra-curto
       }
@@ -156,7 +156,7 @@ export default function Game({
       // Bot venceu (derrota do humano)
       onLossRef.current?.();
       
-      // ✅ CORREÇÃO: Feedback tátil de derrota (apenas em mobile)
+      // CORREÇÃO: Feedback tátil de derrota (apenas em mobile)
       if (Platform && Platform.OS !== 'web') {
         Vibration.vibrate(200); // Vibração longa
       }
@@ -164,7 +164,7 @@ export default function Game({
       // Empate
       onDrawRef.current?.();
       
-      // ✅ CORREÇÃO: Feedback tátil de empate (apenas em mobile)
+      // CORREÇÃO: Feedback tátil de empate (apenas em mobile)
       if (Platform && Platform.OS !== 'web') {
         Vibration.vibrate(100); // Vibração média
       }
@@ -344,7 +344,7 @@ export default function Game({
       )}
 
       {/* ========================================================= */}
-      {/* STATUS DO JOGO */}
+      {/* ESTATUTO DO JOGO */}
       {/* ========================================================= */}
       
       {/* Mensagem de vez/turno atual */}
