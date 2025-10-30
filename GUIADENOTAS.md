@@ -25,16 +25,7 @@ Aqui vai um plano curto e prático, por prioridades, para levar o teu jogo de �
   * Opacidade/scale ao marcar célula e pequeno “pop” no vencedor.
   * Dá para fazer com `Animated` ou `react-native-reanimated`/`moti` se quiseres suavidade extra.
 
-## 2) Jogabilidade e UX
 
-* **Dificuldades do bot** - DIFICULDADE DOS BOTS
-
-  * Hoje é “primeira vaga”. Sugiro três níveis:
-
-    * Fácil: escolha aleatória entre casas livres.
-    * Médio: heurística (centro > cantos > lados; bloquear e tentar vitória imediata).
-    * Difícil: minimax com podas (rápido no 3x3).
-  * Expor a dificuldade nas Definições ou no ecrã SinglePlayer.
 
 * **Desfazer jogada (undo)** - NELSON
 
@@ -53,10 +44,7 @@ Aqui vai um plano curto e prático, por prioridades, para levar o teu jogo de �
   * Streaks de vitórias, tempo médio por jogo, taxa de vitória por dificuldade.
   * Guardar por data para gerar histórico.
 
-* **Gráficos simples** 
 
-  * `react-native-svg` + `victory-native` para um gráfico de linhas da evolução de vitórias.
-  * Alternativa leve: mini charts “sparklines” com `react-native-svg` puro.
 
 * **Conquistas** - carlos
 
