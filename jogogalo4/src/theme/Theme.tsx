@@ -2,31 +2,35 @@
 
 // Importa React e ferramentas para criar/usar contexto e memorizar valores
 import React, { createContext, useContext, useMemo, useState, ReactNode, useEffect } from "react";
+// *** CORREÇÃO ***
+// Importa o tipo 'ColorValue' do react-native
+import { ColorValue } from "react-native";
 // Importa AsyncStorage para persistir a preferência do tema entre execuções
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Define a estrutura da paleta de cores usada em toda a UI
 export type Palette = {
-  primary: ColorValue | undefined; // (Não usado no teu código atual, mas definido)
-  background: string; // cor de fundo principal da aplicação
-  text: string; // cor de texto principal
-  card: string; // cor de cartões/painéis/inputs
-  border: string; // cor de bordas e divisores
-  muted: string; // cor de texto secundário e placeholders
+  primary: ColorValue | undefined; // Agora 'ColorValue' é reconhecido
+  background: string; 
+  text: string; 
+  card: string; 
+  border: string; 
+  muted: string; 
 };
 
 // Define o formato do valor guardado no contexto do tema
 type ThemeContextValue = {
-  darkMode: boolean; // indica se o modo escuro está ativo
-  toggleDarkMode: () => void; // alterna entre claro e escuro
-  colors: Palette; // paleta de cores correspondente ao modo atual
+  darkMode: boolean; 
+  toggleDarkMode: () => void; 
+  colors: Palette; 
 };
 
 // Cria o contexto com um valor padrão seguro (light mode)
 const ThemeContext = createContext<ThemeContextValue>({
-  darkMode: false, // padrão é light mode
-  toggleDarkMode: () => {}, // função vazia por defeito
-  colors: { // paleta light mode por defeito
+  darkMode: false, 
+  toggleDarkMode: () => {}, 
+  colors: { 
+    primary: undefined, // Adicionado valor 'undefined' para corresponder ao tipo
     background: "#f6f7f9",
     text: "#101214",
     card: "#ffffff",
@@ -37,7 +41,6 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 // Hook de conveniência para consumir o tema em qualquer componente
 export function useTheme() {
-  // Retorna o valor atual do contexto (darkMode, toggleDarkMode, colors)
   return useContext(ThemeContext);
 }
 
@@ -53,52 +56,49 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        // Tenta ler a string guardada no dispositivo
         const raw = await AsyncStorage.getItem(THEME_KEY);
-        // Se existir (não for null)
         if (raw != null) {
-          // Converte de string ("true" ou "false") para boolean e atualiza o estado
           setDarkMode(JSON.parse(raw));
         }
       } catch {
-        // Em caso de erro (ex: storage corrompido), ignora e mantém o default (false)
+        // Em caso de erro, ignora e mantém o default (false)
       }
     })();
-  }, []); // [] = Executa apenas uma vez, quando o componente é montado
+  }, []); 
 
   // Sempre que o estado 'darkMode' mudar, persiste o novo valor no AsyncStorage
   useEffect(() => {
-    // Converte o boolean (true/false) para string ("true"/"false") e guarda
     AsyncStorage.setItem(THEME_KEY, JSON.stringify(darkMode));
-  }, [darkMode]); // [darkMode] = Executa sempre que 'darkMode' mudar
+  }, [darkMode]); 
 
   // Função que alterna o estado darkMode
-  const toggleDarkMode = () => setDarkMode((v) => !v); // inverte o valor atual
+  const toggleDarkMode = () => setDarkMode((v) => !v);
 
-  // Calcula a paleta de cores adequada ao modo atual
-  // useMemo garante que este objeto 'colors' só é recalculado se 'darkMode' mudar
+  // Calcula a paleta de cores adequada ao modo atual (memorizado)
   const colors = useMemo<Palette>(() => {
-    // Se o modo escuro estiver ativo, retorna a paleta escura
     if (darkMode) {
+      // Paleta escura
       return {
-        background: "#0f1115", // fundo escuro
-        text: "#f2f2f3",       // texto claro
-        card: "#1a1d24",       // cartões escuros
-        border: "#2a2e36",     // bordas claras
-        muted: "#9ca3af",      // texto secundário
+        primary: undefined, // Adicionado
+        background: "#0f1115", 
+        text: "#f2f2f3", 
+        card: "#1a1d24", 
+        border: "#2a2e36", 
+        muted: "#9ca3af", 
       };
     }
-    // Senão, retorna a paleta clara (padrão)
+    // Paleta clara
     return {
-      background: "#f6f7f9", // fundo claro
-      text: "#101214",       // texto escuro
-      card: "#ffffff",       // cartões brancos
-      border: "#e5e7eb",     // bordas cinzentas
-      muted: "#6b7280",      // texto secundário
+      primary: undefined, // Adicionado
+      background: "#f6f7f9", 
+      text: "#101214", 
+      card: "#ffffff", 
+      border: "#e5e7eb", 
+      muted: "#6b7280", 
     };
-  }, [darkMode]); // [darkMode] = Dependência do useMemo
+  }, [darkMode]); 
 
-  // Valor a expor via contexto (também memorizado)
+  // Valor a expor via contexto (memorizado)
   const value = useMemo(() => ({ darkMode, toggleDarkMode, colors }), [darkMode, colors]);
 
   // Entrega o contexto (value) aos componentes filhos (children)
