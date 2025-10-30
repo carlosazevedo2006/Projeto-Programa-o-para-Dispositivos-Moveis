@@ -7,6 +7,8 @@ import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
 // Importa o hook de tema para aplicar cores globais
 import { useTheme } from "../theme/Theme";
 
+
+
 // Define a tipagem das propriedades esperadas
 type ModeSelectProps = {
   onChoose?: (mode: "single" | "multi") => void; // callback para escolher modo
