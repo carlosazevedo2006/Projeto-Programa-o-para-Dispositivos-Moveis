@@ -7,13 +7,13 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native"; // UI e
 // Importa o tema global (para cores e modo escuro)
 import { useTheme } from "../theme/Theme"; // hook que expõe cores do tema
 // Importa o tipo de dificuldade usado no resto da app/IA
-import type { BotDifficulty } from "../ai/bot"; // "easy" | "medium" | "hard"
+import type { BotDifficulty } from "../ai/bot"; // "Facil" | "Medio" | "Dificil"
 
-// Define o formato das props deste ecrã
+// Define o formato das props deste ecrã (o que o App.tsx lhe passa)
 type Props = {
   // Será chamado quando o utilizador confirmar as escolhas
   onChoose: (payload: { mark: "X" | "O"; difficulty: BotDifficulty }) => void;
-  // Voltar ao menu anterior
+  // Voltar ao menu anterior (ModeSelect)
   onBack: () => void;
 };
 
@@ -22,16 +22,16 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
   // Obtém a paleta de cores atual via tema (respeita modo claro/escuro)
   const { colors } = useTheme();
 
-  // Guarda localmente a seleção do símbolo do humano: "X" começa; "O" deixa o bot (X) começar
-  const [mark, setMark] = useState<"X" | "O" | null>(null);
-  // Guarda localmente a dificuldade: por omissão "Medio"
+  // Estado local: Guarda a seleção do símbolo do humano: "X" ou "O"
+  const [mark, setMark] = useState<"X" | "O" | null>(null); // começa nulo
+  // Estado local: Guarda a dificuldade: por omissão "Medio"
   const [difficulty, setDifficulty] = useState<BotDifficulty>("Medio");
 
-  // Ao carregar em "Começar", valida e envia as escolhas ao App
+  // Handler chamado ao carregar em "Começar"
   const handleStart = () => {
-    // Se ainda não escolheu símbolo, não avança
+    // Se ainda não escolheu símbolo (mark ainda é null), não avança
     if (!mark) return;
-    // Devolve as escolhas para o App decidir e navegar para o Jogo
+    // Devolve as escolhas (mark e difficulty) para o App.tsx
     onChoose({ mark, difficulty });
   };
 
@@ -42,7 +42,7 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
       {/* Título do ecrã */}
       <Text style={[styles.title, { color: colors.text }]}>Singleplayer</Text>
 
-      {/* Texto explicativo da convenção de início (X começa) */}
+      {/* Texto explicativo da convenção de início (X começa sempre) */}
       <Text style={[styles.subtitle, { color: colors.text }]}>
         X começa o jogo. Se escolheres O, o bot (X) joga primeiro.
       </Text>
@@ -58,7 +58,8 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
           style={[
             styles.card, // base do cartão
             { backgroundColor: colors.card, borderColor: colors.border }, // cores do tema
-            mark === "X" && { borderColor: "#4f8cff" }, // realce quando selecionado
+            // Se mark === "X", aplica uma borda azul de realce
+            mark === "X" && { borderColor: "#4f8cff" }, 
           ]}
           accessibilityRole="button" // semântica de botão
           accessibilityLabel="Escolher X" // etiqueta de acessibilidade
@@ -76,7 +77,8 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
           style={[
             styles.card, // base do cartão
             { backgroundColor: colors.card, borderColor: colors.border }, // cores do tema
-            mark === "O" && { borderColor: "#4f8cff" }, // realce quando selecionado
+            // Se mark === "O", aplica uma borda azul de realce
+            mark === "O" && { borderColor: "#4f8cff" }, 
           ]}
           accessibilityRole="button" // semântica de botão
           accessibilityLabel="Escolher O" // etiqueta de acessibilidade
@@ -96,11 +98,12 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
       <View style={styles.row}>
         {/* Fácil */}
         <TouchableOpacity
-          onPress={() => setDifficulty("Facil")} // define dificuldade como "easy"
+          onPress={() => setDifficulty("Facil")} // define dificuldade como "Facil"
           style={[
             styles.pill, // base do botão em forma de pílula
             { backgroundColor: colors.card, borderColor: colors.border }, // cores do tema
-            difficulty === "Facil" && { borderColor: "#4f8cff" }, // realce selecionado
+            // Realce se for a dificuldade ativa
+            difficulty === "Facil" && { borderColor: "#4f8cff" }, 
           ]}
         >
           <Text style={[styles.pillText, { color: colors.text }]}>Fácil</Text>
@@ -108,11 +111,11 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
 
         {/* Médio */}
         <TouchableOpacity
-          onPress={() => setDifficulty("Medio")} // define dificuldade como "medium"
+          onPress={() => setDifficulty("Medio")} // define dificuldade como "Medio"
           style={[
             styles.pill,
             { backgroundColor: colors.card, borderColor: colors.border },
-            difficulty === "Medio" && { borderColor: "#4f8cff" },
+            difficulty === "Medio" && { borderColor: "#4f8cff" }, // realce
           ]}
         >
           <Text style={[styles.pillText, { color: colors.text }]}>Médio</Text>
@@ -120,11 +123,11 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
 
         {/* Difícil */}
         <TouchableOpacity
-          onPress={() => setDifficulty("Dificil")} // define dificuldade como "hard"
+          onPress={() => setDifficulty("Dificil")} // define dificuldade como "Dificil"
           style={[
             styles.pill,
             { backgroundColor: colors.card, borderColor: colors.border },
-            difficulty === "Dificil" && { borderColor: "#4f8cff" },
+            difficulty === "Dificil" && { borderColor: "#4f8cff" }, // realce
           ]}
         >
           <Text style={[styles.pillText, { color: colors.text }]}>Difícil</Text>
@@ -139,7 +142,7 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
             styles.button, // estilo base de botão
             { backgroundColor: colors.card, borderColor: colors.border }, // cores do tema
           ]}
-          onPress={onBack} // ao tocar, volta ao menu de modos
+          onPress={onBack} // ao tocar, chama a função onBack (volta ao menu de modos)
         >
           <Text style={[styles.buttonText, { color: colors.text }]}>Voltar</Text>
         </TouchableOpacity>
@@ -149,10 +152,11 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
           style={[
             styles.button,
             { backgroundColor: colors.card, borderColor: colors.border },
-            !mark && { opacity: 0.5 }, // feedback visual quando desativado
+            // Se 'mark' for nulo (ninguém escolheu), fica com 50% de opacidade
+            !mark && { opacity: 0.5 }, 
           ]}
           onPress={handleStart} // confirma e segue para o jogo
-          disabled={!mark} // bloqueia interação sem símbolo escolhido
+          disabled={!mark} // bloqueia interação (onPress) se !mark for true
         >
           <Text style={[styles.buttonText, { color: colors.text }]}>Começar</Text>
         </TouchableOpacity>
@@ -165,86 +169,86 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
 const styles = StyleSheet.create({
   // Container raiz
   container: {
-    flex: 1,                 // ocupa todo o ecrã
-    padding: 16,             // espaçamento interno
-    justifyContent: "center",// centra verticalmente
+    flex: 1, // ocupa todo o ecrã
+    padding: 16, // espaçamento interno
+    justifyContent: "center", // centra verticalmente
   },
   // Título principal
   title: {
-    fontSize: 22,            // tamanho do título
-    fontWeight: "700",       // destaque
-    marginBottom: 8,         // espaço abaixo
+    fontSize: 22, // tamanho do título
+    fontWeight: "700", // destaque
+    marginBottom: 8, // espaço abaixo
   },
   // Texto explicativo
   subtitle: {
-    fontSize: 14,            // tamanho do texto
-    marginBottom: 16,        // espaço abaixo
+    fontSize: 14, // tamanho do texto
+    marginBottom: 16, // espaço abaixo
   },
   // Título de secções ("Escolhe o teu símbolo", "Dificuldade…")
   sectionTitle: {
-    fontSize: 16,            // tamanho do título de secção
-    fontWeight: "700",       // destaque
-    marginBottom: 8,         // espaço abaixo
+    fontSize: 16, // tamanho do título de secção
+    fontWeight: "700", // destaque
+    marginBottom: 8, // espaço abaixo
   },
   // Linha genérica com elementos lado a lado
   row: {
-    flexDirection: "row",    // coloca filhos na horizontal
-    gap: 12,                 // espaço entre elementos (se RN não suportar, substituir por margens)
-    marginBottom: 16,        // espaço abaixo desta linha
+    flexDirection: "row", // coloca filhos na horizontal
+    gap: 12, // espaço entre elementos (se RN não suportar, substituir por margens)
+    marginBottom: 16, // espaço abaixo desta linha
   },
   // Cartões de seleção de símbolo
   card: {
-    flex: 1,                 // divide o espaço igualmente (X e O)
-    borderWidth: 1,          // borda visível
-    borderRadius: 12,        // cantos arredondados
-    paddingVertical: 18,     // espaçamento interno vertical
-    alignItems: "center",    // centra conteúdo na horizontal
+    flex: 1, // divide o espaço igualmente (X e O)
+    borderWidth: 1, // borda visível
+    borderRadius: 12, // cantos arredondados
+    paddingVertical: 18, // espaçamento interno vertical
+    alignItems: "center", // centra conteúdo na horizontal
   },
   // Símbolo X/O grande
   mark: {
-    fontSize: 42,            // tamanho do X/O
-    fontWeight: "800",       // destaque
-    marginBottom: 8,         // espaço abaixo
+    fontSize: 42, // tamanho do X/O
+    fontWeight: "800", // destaque
+    marginBottom: 8, // espaço abaixo
   },
   // Legenda abaixo do símbolo
   caption: {
-    fontSize: 16,            // tamanho do texto
-    fontWeight: "600",       // leve destaque
+    fontSize: 16, // tamanho do texto
+    fontWeight: "600", // leve destaque
   },
   // Nota informativa (quem começa)
   note: {
-    fontSize: 12,            // tamanho pequeno
-    marginTop: 4,            // espaço acima
+    fontSize: 12, // tamanho pequeno
+    marginTop: 4, // espaço acima
   },
   // Botão tipo “pílula” para dificuldades
   pill: {
-    flex: 1,                 // cada pílula ocupa um terço da linha
-    borderWidth: 1,          // borda
-    borderRadius: 999,       // formato totalmente arredondado
-    paddingVertical: 10,     // espaçamento vertical
-    alignItems: "center",    // centra rótulo
+    flex: 1, // cada pílula ocupa um terço da linha
+    borderWidth: 1, // borda
+    borderRadius: 999, // formato totalmente arredondado
+    paddingVertical: 10, // espaçamento vertical
+    alignItems: "center", // centra rótulo
   },
   // Texto dentro das pílulas
   pillText: {
-    fontSize: 14,            // tamanho do texto
-    fontWeight: "700",       // destaque
+    fontSize: 14, // tamanho do texto
+    fontWeight: "700", // destaque
   },
   // Área das ações finais
   actions: {
-    flexDirection: "row",    // botões lado a lado
-    gap: 12,                 // espaço entre botões
-    marginTop: 8,            // espaço acima
+    flexDirection: "row", // botões lado a lado
+    gap: 12, // espaço entre botões
+    marginTop: 8, // espaço acima
   },
   // Botão base
   button: {
-    borderWidth: 1,          // borda
-    borderRadius: 10,        // cantos arredondados
-    paddingHorizontal: 16,   // espaçamento horizontal interno
-    paddingVertical: 10,     // espaçamento vertical interno
+    borderWidth: 1, // borda
+    borderRadius: 10, // cantos arredondados
+    paddingHorizontal: 16, // espaçamento horizontal interno
+    paddingVertical: 10, // espaçamento vertical interno
   },
   // Texto dos botões
   buttonText: {
-    fontSize: 14,            // tamanho do texto
-    fontWeight: "700",       // peso
+    fontSize: 14, // tamanho do texto
+    fontWeight: "700", // peso
   },
 });

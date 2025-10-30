@@ -1,9 +1,11 @@
+// src/screens/SplashScreen.tsx
+
 // Importa React e o hook useEffect para efeitos temporizados
 import React, { useEffect } from "react";
 // Importa componentes básicos do React Native
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 
-// Declara o tipo das props (propriedades recebidas do App)
+// Declara o tipo das props (propriedades recebidas do App.tsx)
 type SplashProps = {
   onDone: () => void; // Função a executar quando o splash terminar
 };
@@ -12,15 +14,17 @@ type SplashProps = {
 export default function SplashScreen({ onDone }: SplashProps) {
   // useEffect é usado para executar código assim que o componente for montado
   useEffect(() => {
-    // Define um temporizador de 2 segundos
+    // Define um temporizador de 2 segundos (2000 milissegundos)
     const timer = setTimeout(() => {
-      // Após esse tempo, chama o callback "onDone" recebido do App
+      // Após esse tempo, chama o callback "onDone" recebido do App.tsx
       onDone();
     }, 2000);
 
-    // Retorna uma função de limpeza para cancelar o timer se o componente for desmontado antes
+    // Retorna uma função de limpeza:
+    // Se o componente for desmontado (ex: fechar a app) antes dos 2s,
+    // o temporizador é cancelado para evitar erros.
     return () => clearTimeout(timer);
-  }, []);
+  }, []); // [] = Executa apenas uma vez
 
   // Renderização do conteúdo do Splash Screen
   return (
@@ -28,7 +32,7 @@ export default function SplashScreen({ onDone }: SplashProps) {
       {/* Título central */}
       <Text style={styles.title}>Jogo do Galo</Text>
 
-      {/* Indicador de carregamento abaixo do título */}
+      {/* Indicador de carregamento (Spinner) abaixo do título */}
       <ActivityIndicator size="large" color="#007bff" />
     </View>
   );
@@ -42,7 +46,7 @@ const styles = StyleSheet.create({
     flex: 1, // ocupa todo o ecrã
     justifyContent: "center", // centra verticalmente
     alignItems: "center", // centra horizontalmente
-    backgroundColor: "#fff", // fundo branco (neutro)
+    backgroundColor: "#fff", // fundo branco (neutro, não depende do tema ainda)
   },
   title: {
     fontSize: 32, // tamanho grande para destaque
