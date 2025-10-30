@@ -24,8 +24,8 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
 
   // Guarda localmente a seleção do símbolo do humano: "X" começa; "O" deixa o bot (X) começar
   const [mark, setMark] = useState<"X" | "O" | null>(null);
-  // Guarda localmente a dificuldade: por omissão "medium"
-  const [difficulty, setDifficulty] = useState<BotDifficulty>("medium");
+  // Guarda localmente a dificuldade: por omissão "Medio"
+  const [difficulty, setDifficulty] = useState<BotDifficulty>("Medio");
 
   // Ao carregar em "Começar", valida e envia as escolhas ao App
   const handleStart = () => {
@@ -96,11 +96,11 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
       <View style={styles.row}>
         {/* Fácil */}
         <TouchableOpacity
-          onPress={() => setDifficulty("easy")} // define dificuldade como "easy"
+          onPress={() => setDifficulty("Facil")} // define dificuldade como "easy"
           style={[
             styles.pill, // base do botão em forma de pílula
             { backgroundColor: colors.card, borderColor: colors.border }, // cores do tema
-            difficulty === "easy" && { borderColor: "#4f8cff" }, // realce selecionado
+            difficulty === "Facil" && { borderColor: "#4f8cff" }, // realce selecionado
           ]}
         >
           <Text style={[styles.pillText, { color: colors.text }]}>Fácil</Text>
@@ -108,11 +108,11 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
 
         {/* Médio */}
         <TouchableOpacity
-          onPress={() => setDifficulty("medium")} // define dificuldade como "medium"
+          onPress={() => setDifficulty("Medio")} // define dificuldade como "medium"
           style={[
             styles.pill,
             { backgroundColor: colors.card, borderColor: colors.border },
-            difficulty === "medium" && { borderColor: "#4f8cff" },
+            difficulty === "Medio" && { borderColor: "#4f8cff" },
           ]}
         >
           <Text style={[styles.pillText, { color: colors.text }]}>Médio</Text>
@@ -120,11 +120,11 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
 
         {/* Difícil */}
         <TouchableOpacity
-          onPress={() => setDifficulty("hard")} // define dificuldade como "hard"
+          onPress={() => setDifficulty("Dificil")} // define dificuldade como "hard"
           style={[
             styles.pill,
             { backgroundColor: colors.card, borderColor: colors.border },
-            difficulty === "hard" && { borderColor: "#4f8cff" },
+            difficulty === "Dificil" && { borderColor: "#4f8cff" },
           ]}
         >
           <Text style={[styles.pillText, { color: colors.text }]}>Difícil</Text>

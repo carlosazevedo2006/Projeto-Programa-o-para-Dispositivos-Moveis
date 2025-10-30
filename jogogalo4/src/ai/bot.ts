@@ -3,7 +3,7 @@
 import { Board, Mark, cloneBoard } from "../utils/board";
 
 // Dificuldades disponíveis
-export type BotDifficulty = "easy" | "medium" | "hard";
+export type BotDifficulty = "Facil" | "Medio" | "Dificil";
 
 // Retorna todas as posições vazias do tabuleiro
 export function availableMoves(board: Board): [number, number][] {
@@ -136,11 +136,11 @@ export function chooseBotMoveByDifficulty(
   human: Mark
 ): [number, number] | null {
   switch (difficulty) {
-    case "easy":
+    case "Facil":
       return chooseEasy(board);
-    case "medium":
+    case "Medio":
       return chooseMedium(board, bot, human);
-    case "hard":
+    case "Dificil":
       return chooseHard(board, bot, human);
     default:
       return chooseMedium(board, bot, human);
