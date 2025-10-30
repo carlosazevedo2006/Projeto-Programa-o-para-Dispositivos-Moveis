@@ -1,11 +1,12 @@
 // src/screens/Game.tsx
+
 // ---------------------------------------------------------------
 // Ecrã principal do jogo do galo, que suporta single e multiplayer.
 // Inclui integração com o bot (fácil, médio, difícil) e modo escuro.
 // ---------------------------------------------------------------
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Animated } from "react-native";
 import { useTheme } from "../theme/Theme";
 
 // Importa tipos e funções auxiliares do tabuleiro
@@ -26,7 +27,7 @@ type Props = {
   botEnabled?: boolean;                           // Define se há bot ativo
   botMark?: "X" | "O";                            // Símbolo do bot
   humanMark?: "X" | "O";                          // Símbolo do jogador
-  botDifficulty?: BotDifficulty;                  // Dificuldade do bot: easy | medium | hard
+  botDifficulty?: BotDifficulty;                  // Dificuldade do bot: Facil | Medio | Dificil
 };
 
 // ---------------------------------------------------------------
@@ -135,10 +136,38 @@ export default function Game({
   }, [botEnabled, turn, botMark, humanMark, board, winner, isFull, botDifficulty]);
 
   // ---------------------------------------------------------------
+  // Animações das células
+  // ---------------------------------------------------------------
+  // Cria uma matriz de valores animados para as células (3x3)
+  const scaleAnims = useRef<Animated.Value[][]>([
+    [new Animated.Value(0.5), new Animated.Value(0.5), new Animated.Value(0.5)],
+    [new Animated.Value(0.5), new Animated.Value(0.5), new Animated.Value(0.5)],
+    [new Animated.Value(0.5), new Animated.Value(0.5), new Animated.Value(0.5)],
+  ]).current;
+
+  // Efeito para animar as células quando o tabuleiro muda
+  useEffect(() => {
+    board.forEach((row, r) => {
+      row.forEach((cell, c) => {
+        if (cell !== null) {
+          // Se a célula não é nula, anima para 1
+          Animated.spring(scaleAnims[r][c], {
+            toValue: 1,
+            useNativeDriver: true,
+          }).start();
+        } else {
+          // Se é nula, volta para 0.5 (para quando reiniciar o jogo)
+          scaleAnims[r][c].setValue(0.5);
+        }
+      });
+    });
+  }, [board, scaleAnims]);
+
+  // ---------------------------------------------------------------
   // Quando o jogador toca numa célula
   // ---------------------------------------------------------------
   const handleCell = (r: number, c: number) => {
-    if (winner) return; // se já terminou, não faz nada
+    if (winner || isFull) return; // se já terminou, não faz nada
     if (botEnabled && turn !== humanMark) return; // se for vez do bot, ignora
 
     const next = cloneBoard(board); // cria cópia
@@ -203,21 +232,35 @@ export default function Game({
       <View style={styles.board}>
         {board.map((row, r) => (
           <View key={r} style={styles.row}>
-            {row.map((cell, c) => (
-              <TouchableOpacity
-                key={`${r}-${c}`}
-                style={[
-                  styles.cell,
-                  { borderColor: colors.border, backgroundColor: colors.card },
-                ]}
-                onPress={() => handleCell(r, c)}
-              >
-                {/* Mostra X, O ou vazio */}
-                <Text style={[styles.cellText, { color: colors.text }]}>
-                  {cell ?? ""}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {row.map((cell, c) => {
+              const cellValue = cell;
+              // Determina se a célula deve estar desabilitada
+              const isDisabled = !!cellValue || !!winner || isFull || (botEnabled && turn !== humanMark);
+              return (
+                <TouchableOpacity
+                  key={`${r}-${c}`}
+                  style={[
+                    styles.cell,
+                    {
+                      borderColor: colors.border,
+                      // Muda a cor de fundo se a célula estiver preenchida
+                      backgroundColor: cellValue ? colors.primary : colors.card,
+                    },
+                  ]}
+                  onPress={() => handleCell(r, c)}
+                  disabled={isDisabled}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Célula [${r+1},${c+1}]: ${cellValue || "Vazia"}`}
+                  accessibilityState={{ disabled: isDisabled }}
+                >
+                  <Animated.View style={{ transform: [{ scale: scaleAnims[r][c] }] }}>
+                    <Text style={[styles.cellText, { color: cellValue ? colors.card : colors.text }]}>
+                      {cellValue ?? ""}
+                    </Text>
+                  </Animated.View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         ))}
       </View>
