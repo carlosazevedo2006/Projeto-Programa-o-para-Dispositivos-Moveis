@@ -25,14 +25,14 @@ import StatsScreen, { loadStats, saveStats, Stats } from "./src/screens/StatsScr
 // Tema global
 import { ThemeProvider, useTheme } from "./src/theme/Theme";
 
-// *** CORREÇÃO 1 (Importação de Tipo) ***
+// *** CORREÇÃO 1: Importar o tipo correto ***
 // Importa o tipo de dificuldade do bot a partir do ficheiro de IA (src/ai/bot.ts)
 import type { BotDifficulty } from "./src/ai/bot"; //
 
 // Alias para evitar conflitos de tipagem caso Game não declare todas as novas props
 const GameComponent: any = Game;
 
-// (O tipo local "easy" | "medium" | "hard" foi removido)
+// *** (Tipo 'BotDifficulty = "easy" | "medium" | "hard"' REMOVIDO DAQUI) ***
 
 // Componente interno que consome o tema global
 function AppInner() {
@@ -49,8 +49,8 @@ function AppInner() {
   // Símbolo escolhido pelo humano no singleplayer
   const [humanMark, setHumanMark] = useState<"X" | "O">("X");
   
-  // *** CORREÇÃO 2 (Estado Inicial) ***
-  // Usa o valor inicial correto "Medio" (com M maiúsculo) que corresponde ao tipo importado
+  // *** CORREÇÃO 2: Usar o valor inicial correto ***
+  // Usa o valor inicial "Medio" (com M maiúsculo) que corresponde ao tipo importado
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("Medio"); //
 
   // Estado do modal de resultado
@@ -128,12 +128,10 @@ function AppInner() {
     <SafeAreaProvider>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         
-        {/* Ecrã Splash */}
         {stage === "splash" && (
           <SplashScreen onDone={() => setStage("mode")} />
         )}
 
-        {/* Ecrã Seleção de Modo */}
         {stage === "mode" && (
           <ModeSelect
             onChoose={(mode) => {
@@ -148,19 +146,17 @@ function AppInner() {
           />
         )}
 
-        {/* Ecrã Configuração Single Player */}
         {stage === "single" && (
           <SinglePlayer
             onChoose={(payload) => {
               setHumanMark(payload.mark);
-              setBotDifficulty(payload.difficulty);
+              setBotDifficulty(payload.difficulty); // Agora os tipos batem certo
               setStage("game");
             }}
             onBack={() => setStage("mode")}
           />
         )}
 
-        {/* Ecrã Configuração Multi Player */}
         {stage === "multi" && (
           <PlayerSelect
             onStart={() => setStage("game")}
@@ -168,7 +164,6 @@ function AppInner() {
           />
         )}
 
-        {/* Ecrã de Jogo */}
         {stage === "game" && (
           <GameComponent
             key={gameKey}
@@ -179,33 +174,31 @@ function AppInner() {
             botEnabled={isSingle}
             botMark={botMark}
             humanMark={humanMark}
-            botDifficulty={botDifficulty}
+            botDifficulty={botDifficulty} // Passa o tipo correto ("Facil", "Medio", "Dificil")
             onGameEnd={showResult}
           />
         )}
 
-        {/* Ecrã de Estatísticas */}
         {stage === "stats" && (
           <StatsScreen onBack={() => setStage("mode")} />
         )}
 
-        {/* *** CORREÇÃO 3 (O ERRO PRINCIPAL) ***
-            Passa a função () => setSettingsOpen(true) 
-            em vez de executar setSettingsOpen(true)
+        {/* *** CORREÇÃO 3: A sintaxe do onPress ***
+            Tem de ser uma função () => ...
         */}
         <SettingsButton onPress={() => setSettingsOpen(true)} />
 
         {/* Modal de Definições */}
         <SettingsModal
           visible={settingsOpen}
-          onClose={() => setSettingsOpen(false)} // Esta função agora vai funcionar
+          onClose={() => setSettingsOpen(false)} // Esta função agora será chamada corretamente
           onToggleTheme={toggleDarkMode}
           onResetGame={() => {
-            setSettingsOpen(false); // Fecha o modal
+            setSettingsOpen(false); 
             resetGame();
           }}
           onOpenStats={() => {
-            setSettingsOpen(false); // Fecha o modal
+            setSettingsOpen(false); 
             setStage("stats");
           }}
         />
