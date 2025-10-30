@@ -1,251 +1,241 @@
 // App.tsx
 
 // Importa React e hooks essenciais
-import React, { useState, useEffect, useCallback } from "react"; // useState para estados, useEffect para efeitos, useCallback para funções estáveis
+import React, { useState, useEffect, useCallback } from "react";
 // Provider para áreas seguras (notch, barra de estado)
-import { SafeAreaProvider } from "react-native-safe-area-context"; // garante layout correto em dispositivos com notch
+import { SafeAreaProvider } from "react-native-safe-area-context";
 // Componentes básicos do React Native
-import { View, StyleSheet } from "react-native"; // View para containers e StyleSheet para estilos
+import { View, StyleSheet } from "react-native";
 
 // Telas do projeto
-import SplashScreen from "./src/screens/SplashScreen"; // ecrã inicial, aceita apenas onDone
-import ModeSelect from "./src/screens/ModeSelect"; // ecrã de seleção de modo (single ou multi)
-import SinglePlayer from "./src/screens/SinglePlayer"; // ecrã para escolher X/O e dificuldade
-import PlayerSelect from "./src/screens/PlayerSelect"; // ecrã de dois jogadores (aplica tema)
-import Game from "./src/screens/Game"; // ecrã do jogo, com bot e callbacks
+import SplashScreen from "./src/screens/SplashScreen";
+import ModeSelect from "./src/screens/ModeSelect";
+import SinglePlayer from "./src/screens/SinglePlayer";
+import PlayerSelect from "./src/screens/PlayerSelect";
+import Game from "./src/screens/Game";
 
 // Componentes auxiliares
-import SettingsButton from "./src/components/SettingsButton"; // botão de definições fixo no canto inferior esquerdo
-import SettingsModal from "./src/components/SettingsModal"; // modal de definições (tema, stats, reset)
-import ResultModal from "./src/components/ResultModal"; // modal reutilizável para mostrar resultado do jogo
+import SettingsButton from "./src/components/SettingsButton";
+import SettingsModal from "./src/components/SettingsModal";
+import ResultModal from "./src/components/ResultModal";
 
 // Estatísticas persistidas e normalizadas
-import StatsScreen, { loadStats, saveStats, Stats } from "./src/screens/StatsScreen"; // tela de estatísticas e helpers
+import StatsScreen, { loadStats, saveStats, Stats } from "./src/screens/StatsScreen";
 
 // Tema global
-import { ThemeProvider, useTheme } from "./src/theme/Theme"; // provider e hook para paleta de cores
+import { ThemeProvider, useTheme } from "./src/theme/Theme";
 
-// *** CORREÇÃO ***
+// *** CORREÇÃO 1: Importar o tipo correto ***
 // Importa o tipo de dificuldade do bot a partir do ficheiro de IA (src/ai/bot.ts)
-// Isto garante que "Facil", "Medio", "Dificil" são usados em toda a app.
 import type { BotDifficulty } from "./src/ai/bot"; //
 
 // Alias para evitar conflitos de tipagem caso Game não declare todas as novas props
-const GameComponent: any = Game; // permite passar props extras sem erro de tipo
+const GameComponent: any = Game;
 
-// (Tipo BotDifficulty removido daqui para usar o tipo importado)
+// *** (Tipo 'BotDifficulty = "easy" | "medium" | "hard"' REMOVIDO DAQUI) ***
 
 // Componente interno que consome o tema global
 function AppInner() {
   // Estado de navegação simples por etapas
-  const [stage, setStage] = useState<"splash" | "mode" | "single" | "multi" | "game" | "stats">("splash"); // controla qual ecrã mostrar
+  const [stage, setStage] = useState<"splash" | "mode" | "single" | "multi" | "game" | "stats">("splash");
   // Estado do modal de definições
-  const [settingsOpen, setSettingsOpen] = useState(false); // controla visibilidade do modal de definições
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // Estado de estatísticas globais
-  const [stats, setStats] = useState<Stats>({ wins: 0, draws: 0, losses: 0 }); // vitórias, empates, derrotas
-  // Chave para forçar remontagem do Game (útil para reset rápido)
-  const [gameKey, setGameKey] = useState(0); // incrementa para reiniciar o componente Game
-  // Indica se o jogo atual é singleplayer (ativa o bot)
-  const [isSingle, setIsSingle] = useState(false); // true para single, false para multi
+  const [stats, setStats] = useState<Stats>({ wins: 0, draws: 0, losses: 0 });
+  // Chave para forçar remontagem do Game
+  const [gameKey, setGameKey] = useState(0);
+  // Indica se o jogo atual é singleplayer
+  const [isSingle, setIsSingle] = useState(false);
   // Símbolo escolhido pelo humano no singleplayer
-  const [humanMark, setHumanMark] = useState<"X" | "O">("X"); // por omissão "X"
+  const [humanMark, setHumanMark] = useState<"X" | "O">("X");
   
-  // *** CORREÇÃO ***
-  // Dificuldade do bot no singleplayer (usa o tipo importado e o valor inicial correto "Medio")
+  // *** CORREÇÃO 2: Usar o valor inicial correto ***
+  // Usa o valor inicial "Medio" (com M maiúsculo) que corresponde ao tipo importado
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("Medio"); //
 
   // Estado do modal de resultado
-  const [resultOpen, setResultOpen] = useState(false); // controla visibilidade do ResultModal
-  const [resultTitle, setResultTitle] = useState(""); // título mostrado no ResultModal
-  const [resultMessage, setResultMessage] = useState<string | undefined>(undefined); // mensagem secundária
+  const [resultOpen, setResultOpen] = useState(false);
+  const [resultTitle, setResultTitle] = useState("");
+  const [resultMessage, setResultMessage] = useState<string | undefined>(undefined);
 
   // Usa o tema global (cores e alternador)
-  const { colors, toggleDarkMode } = useTheme(); // cores do tema atual e função para alternar o modo
+  const { colors, toggleDarkMode } = useTheme();
 
   // Carrega estatísticas ao arrancar a aplicação
   useEffect(() => {
     (async () => {
-      const s = await loadStats(); // lê do AsyncStorage e normaliza
-      await saveStats(s); // regrava normalizado para sanear valores antigos
-      setStats(s); // aplica no estado local
+      const s = await loadStats();
+      await saveStats(s);
+      setStats(s);
     })();
-  }, []); // [] significa: executa apenas uma vez ao montar
+  }, []);
 
   // Persiste estatísticas sempre que mudarem
   useEffect(() => {
-    saveStats(stats); // guarda no AsyncStorage
-  }, [stats]); // [stats] significa: dispara quando stats muda
+    saveStats(stats);
+  }, [stats]);
 
-  // Funções de incremento com coação numérica e identidade estável (useCallback)
+  // Funções de incremento (useCallback para performance)
   const addWin = useCallback(() => {
-    setStats((s) => ({ ...s, wins: (Number(s.wins) || 0) + 1 })); // soma numérica em vitórias
-  }, []); // [] significa: sem dependências, a função nunca muda
+    setStats((s) => ({ ...s, wins: (Number(s.wins) || 0) + 1 }));
+  }, []);
   const addDraw = useCallback(() => {
-    setStats((s) => ({ ...s, draws: (Number(s.draws) || 0) + 1 })); // soma numérica em empates
-  }, []); // sem dependências
+    setStats((s) => ({ ...s, draws: (Number(s.draws) || 0) + 1 }));
+  }, []);
   const addLoss = useCallback(() => {
-    setStats((s) => ({ ...s, losses: (Number(s.losses) || 0) + 1 })); // soma numérica em derrotas
-  }, []); // sem dependências
+    setStats((s) => ({ ...s, losses: (Number(s.losses) || 0) + 1 }));
+  }, []);
 
-  // Reinicia o jogo atual forçando remontagem do componente Game
-  const resetGame = () => setGameKey((k) => k + 1); // incrementa a key para reiniciar o tabuleiro
+  // Reinicia o jogo atual
+  const resetGame = () => setGameKey((k) => k + 1);
 
-  // Calcula a marca do bot com base na escolha do humano
-  const botMark: "X" | "O" = humanMark === "X" ? "O" : "X"; // bot usa o símbolo oposto
+  // Calcula a marca do bot
+  const botMark: "X" | "O" = humanMark === "X" ? "O" : "X";
 
-  // Constrói título e mensagem do ResultModal ao fim do jogo e abre a janela
+  // Mostra o resultado do jogo
   const showResult = (winner: "X" | "O" | null) => {
     if (isSingle) {
       // Caso singleplayer
       if (winner === null) {
-        setResultTitle("Empate"); // empate no single
-        setResultMessage(undefined); // sem mensagem extra
+        setResultTitle("Empate");
+        setResultMessage(undefined);
       } else if (winner === humanMark) {
-        setResultTitle("Ganhaste"); // humano venceu
-        setResultMessage("O bot perdeu"); // mensagem secundária
+        setResultTitle("Ganhaste");
+        setResultMessage("O bot perdeu");
       } else {
-        setResultTitle("O bot ganhou"); // bot venceu
-        setResultMessage("Perdeste esta partida"); // mensagem secundária
+        setResultTitle("O bot ganhou");
+        setResultMessage("Perdeste esta partida");
       }
-      setResultOpen(true); // abre o modal
-      return; // termina aqui
+      setResultOpen(true);
+      return;
     }
-    // Caso multiplayer (Jogador 1 = X, Jogador 2 = O por convenção)
+    // Caso multiplayer
     if (winner === null) {
-      setResultTitle("Empate"); // empate no multi
-      setResultMessage(undefined); // sem mensagem extra
+      setResultTitle("Empate");
+      setResultMessage(undefined);
     } else if (winner === "X") {
-      setResultTitle("Vitória do Jogador 1"); // X venceu
-      setResultMessage("Jogador 2 perdeu"); // mensagem secundária
+      setResultTitle("Vitória do Jogador 1");
+      setResultMessage("Jogador 2 perdeu");
     } else {
-      setResultTitle("Vitória do Jogador 2"); // O venceu
-      setResultMessage("Jogador 1 perdeu"); // mensagem secundária
+      setResultTitle("Vitória do Jogador 2");
+      setResultMessage("Jogador 1 perdeu");
     }
-    setResultOpen(true); // abre o modal
-  }; // fim de showResult
+    setResultOpen(true);
+  };
 
   // Render principal do app
   return (
-    // Provider de áreas seguras
     <SafeAreaProvider>
-      {/* Container raiz com cor de fundo do tema */}
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Ecrã inicial: apenas onDone é suportado pelo SplashScreen */}
+        
         {stage === "splash" && (
-          <SplashScreen onDone={() => setStage("mode")} /> // ao terminar o splash, vai para o menu de modos
+          <SplashScreen onDone={() => setStage("mode")} />
         )}
 
-        {/* Seleção de modo: define single ou multi e navega para a tela correspondente */}
         {stage === "mode" && (
           <ModeSelect
             onChoose={(mode) => {
               if (mode === "single") {
-                setIsSingle(true); // ativa bot
-                setStage("single"); // vai escolher X/O e dificuldade
+                setIsSingle(true);
+                setStage("single");
               } else {
-                setIsSingle(false); // desativa bot
-                setStage("multi"); // vai para dois jogadores
+                setIsSingle(false);
+                setStage("multi");
               }
             }}
           />
         )}
 
-        {/* Singleplayer: escolher X/O e dificuldade. Ao confirmar, entra no jogo. */}
         {stage === "single" && (
           <SinglePlayer
             onChoose={(payload) => {
-              // *** CORREÇÃO ***
-              // O payload.difficulty agora é "Facil", "Medio" ou "Dificil", que corresponde ao tipo do estado
-              setHumanMark(payload.mark); // guarda a escolha do humano (X ou O)
-              setBotDifficulty(payload.difficulty); // guarda a dificuldade escolhida
-              setStage("game"); // navega para o jogo
+              setHumanMark(payload.mark);
+              setBotDifficulty(payload.difficulty); // Agora os tipos batem certo
+              setStage("game");
             }}
-            onBack={() => setStage("mode")} // voltar ao menu inicial
+            onBack={() => setStage("mode")}
           />
         )}
 
-        {/* Multiplayer: ecrã de dois jogadores (tema já aplicado) */}
         {stage === "multi" && (
           <PlayerSelect
-            onStart={() => setStage("game")} // inicia o jogo a partir do multi
-            onBack={() => setStage("mode")} // volta ao menu inicial
+            onStart={() => setStage("game")}
+            onBack={() => setStage("mode")}
           />
         )}
 
-        {/* Ecrã de jogo: passa callbacks, marcas, dificuldade e onGameEnd */}
         {stage === "game" && (
           <GameComponent
-            key={gameKey} // força reset ao mudar a key
-            onWin={addWin} // incrementa vitórias (usado no single)
-            onDraw={addDraw} // incrementa empates
-            onLoss={addLoss} // incrementa derrotas (usado no single)
-            onExit={() => setStage("mode")} // sair do jogo volta ao menu
-            botEnabled={isSingle} // ativa ou não o bot
-            botMark={botMark} // símbolo do bot
-            humanMark={humanMark} // símbolo do humano
-            botDifficulty={botDifficulty} // passa a dificuldade escolhida
-            onGameEnd={showResult} // callback para abrir a janela de resultado
+            key={gameKey}
+            onWin={addWin}
+            onDraw={addDraw}
+            onLoss={addLoss}
+            onExit={() => setStage("mode")}
+            botEnabled={isSingle}
+            botMark={botMark}
+            humanMark={humanMark}
+            botDifficulty={botDifficulty} // Passa o tipo correto ("Facil", "Medio", "Dificil")
+            onGameEnd={showResult}
           />
         )}
 
-        {/* Ecrã de estatísticas com valores persistidos e normalizados */}
         {stage === "stats" && (
-          <StatsScreen onBack={() => setStage("mode")} /> // voltar ao menu
+          <StatsScreen onBack={() => setStage("mode")} />
         )}
 
-        {/* Botão de definições persistente no canto inferior esquerdo */}
-        <SettingsButton onPress={() => setSettingsOpen(true)} /> {/* abre o modal de definições */}
+        {/* *** CORREÇÃO 3: A sintaxe do onPress ***
+            Tem de ser uma função () => ...
+        */}
+        <SettingsButton onPress={() => setSettingsOpen(true)} />
 
-        {/* Modal de definições: alterna tema, mostra stats e reinicia jogo */}
+        {/* Modal de Definições */}
         <SettingsModal
-          visible={settingsOpen} // controla visibilidade
-          onClose={() => setSettingsOpen(false)} // fecha o modal
-          onToggleTheme={toggleDarkMode} // alterna entre claro e escuro
-          onResetGame={() => { // reinicia a partida atual
-            setSettingsOpen(false); // fecha o modal
-            resetGame(); // força remontagem do Game
+          visible={settingsOpen}
+          onClose={() => setSettingsOpen(false)} // Esta função agora será chamada corretamente
+          onToggleTheme={toggleDarkMode}
+          onResetGame={() => {
+            setSettingsOpen(false); 
+            resetGame();
           }}
-          onOpenStats={() => { // abre a tela de estatísticas
-            setSettingsOpen(false); // fecha o modal
-            setStage("stats"); // navega para stats
+          onOpenStats={() => {
+            setSettingsOpen(false); 
+            setStage("stats");
           }}
         />
 
-        {/* Janela de resultado do jogo (single e multi) */}
+        {/* Modal de Resultado */}
         <ResultModal
-          visible={resultOpen} // mostra/esconde janela
-          title={resultTitle} // título calculado
-          message={resultMessage} // mensagem secundária opcional
-          onPlayAgain={() => { // ação "Jogar de novo"
-            setResultOpen(false); // fecha a janela
-            setGameKey((k) => k + 1); // reinicia o componente Game
+          visible={resultOpen}
+          title={resultTitle}
+          message={resultMessage}
+          onPlayAgain={() => {
+            setResultOpen(false);
+            setGameKey((k) => k + 1);
           }}
-          onExitToMenu={() => { // ação "Voltar ao menu"
-            setResultOpen(false); // fecha a janela
-            setStage("mode"); // vai para o menu principal
+          onExitToMenu={() => {
+            setResultOpen(false);
+            setStage("mode");
           }}
-          onClose={() => setResultOpen(false)} // fechar sem mais ação
+          onClose={() => setResultOpen(false)}
         />
       </View>
     </SafeAreaProvider>
   );
-} // fim de AppInner
+}
 
-// Exporta App com o ThemeProvider envolvendo o AppInner
+// Componente principal
 export default function App() {
   return (
-    // O ThemeProvider dá a toda a app acesso ao tema (cores, modo escuro)
     <ThemeProvider>
-      {/* O AppInner contém a lógica principal e consome o tema */}
       <AppInner />
     </ThemeProvider>
   );
 }
 
-// Estilos básicos do container raiz
+// Estilos
 const styles = StyleSheet.create({
   container: {
-    flex: 1, // ocupa o ecrã inteiro
-    justifyContent: "center", // alinha verticalmente por padrão
+    flex: 1,
+    justifyContent: "center",
   },
 });
