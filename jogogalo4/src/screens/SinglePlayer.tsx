@@ -1,132 +1,194 @@
 // src/screens/SinglePlayer.tsx
-// ---------------------------------------------------------------
-// Ecrã de configuração do singleplayer com melhorias de UX,
-// validações e feedback visual melhorado.
-// ---------------------------------------------------------------
+// =============================================================
+// ECRÃ DE SELEÇÃO DE SINGLEPLAYER - CONFIGURAÇÃO DO JOGO VS BOT
+// =============================================================
 
+// Importa React e hooks necessários
 import React, { useState, useCallback } from "react";
+// Importa componentes do React Native
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
-  ScrollView
+  ScrollView,
+  Platform,    // ✅ CORREÇÃO: Importar Platform para detetar o SO
+  Vibration    // ✅ CORREÇÃO: Importar Vibration para feedback tátil
 } from "react-native";
+// Importa o sistema de temas para cores consistentes
 import { useTheme } from "../theme/Theme";
+// Importa o tipo de dificuldade do bot (definido no ficheiro da IA)
 import type { BotDifficulty } from "../ai/bot";
 
-// Define o formato das props
+// =============================================================
+// DEFINIÇÃO DAS PROPRIEDADES DO COMPONENTE
+// =============================================================
 type Props = {
+  // Callback chamado quando o utilizador confirma as seleções
   onChoose: (payload: { mark: "X" | "O"; difficulty: BotDifficulty }) => void;
+  // Callback para voltar ao ecrã anterior
   onBack: () => void;
 };
 
-// Descrições das dificuldades para melhor UX
+// =============================================================
+// DESCRIÇÕES DAS DIFICULDADES PARA MELHOR EXPERIÊNCIA DO UTILIZADOR
+// =============================================================
 const DIFFICULTY_DESCRIPTIONS: Record<BotDifficulty, string> = {
   "Facil": "🤖 O bot faz jogadas básicas - Perfeito para iniciantes",
   "Medio": "🎯 O bot bloqueia e ataca - Bom para jogadores experientes", 
   "Dificil": "🧠 Algoritmo avançado - Quase impossível de vencer"
 };
 
-// Componente do ecrã de configuração do singleplayer
+// =============================================================
+// COMPONENTE PRINCIPAL - SINGLEPLAYER SCREEN
+// =============================================================
 export default function SinglePlayer({ onChoose, onBack }: Props) {
+  // =============================================================
+  // HOOKS E ESTADOS
+  // =============================================================
+  
+  // Obtém as cores do tema atual (modo claro/escuro)
   const { colors, darkMode } = useTheme();
 
-  // Estado local com valores iniciais
+  // Estado para guardar o símbolo selecionado pelo jogador (X ou O)
   const [selectedMark, setSelectedMark] = useState<"X" | "O" | null>(null);
+  
+  // Estado para guardar a dificuldade selecionada do bot
   const [selectedDifficulty, setSelectedDifficulty] = useState<BotDifficulty>("Medio");
 
-  // Handler para iniciar o jogo com validação
+  // =============================================================
+  // FUNÇÕES DE MANIPULAÇÃO DE EVENTOS (useCallback para performance)
+  // =============================================================
+
+  /**
+   * Manipula a seleção do símbolo pelo jogador
+   * @param mark - Símbolo selecionado ("X" ou "O")
+   */
+  const handleMarkSelection = useCallback((mark: "X" | "O") => {
+    // Atualiza o estado com o símbolo selecionado
+    setSelectedMark(mark);
+    
+    // ✅ CORREÇÃO: Verificar se Platform existe antes de usar
+    // Adiciona feedback tátil em dispositivos móveis (não web)
+    if (Platform && Platform.OS !== 'web') {
+      Vibration.vibrate(25); // Vibração curta para feedback
+    }
+  }, []); // Array vazio - função estável
+
+  /**
+   * Manipula a seleção da dificuldade do bot
+   * @param difficulty - Dificuldade selecionada
+   */
+  const handleDifficultySelection = useCallback((difficulty: BotDifficulty) => {
+    // Atualiza o estado com a dificuldade selecionada
+    setSelectedDifficulty(difficulty);
+    
+    // ✅ CORREÇÃO: Verificar se Platform existe antes de usar
+    // Adiciona feedback tátil em dispositivos móveis
+    if (Platform && Platform.OS !== 'web') {
+      Vibration.vibrate(25); // Vibração curta para feedback
+    }
+  }, []); // Array vazio - função estável
+
+  /**
+   * Manipula o início do jogo com validações
+   */
   const handleStartGame = useCallback(() => {
+    // Valida se o jogador selecionou um símbolo
     if (!selectedMark) {
       Alert.alert(
-        "Escolha Necessária",
-        "Por favor, seleciona o teu símbolo para começar o jogo.",
-        [{ text: "Entendi", style: "default" }]
+        "Escolha Necessária", // Título do alerta
+        "Por favor, seleciona o teu símbolo para começar o jogo.", // Mensagem
+        [{ text: "Entendi", style: "default" }] // Botão de confirmação
       );
-      return;
+      return; // Sai da função se não houver símbolo selecionado
     }
 
-    // Confirmação para dificuldade difícil
+    // Confirmação extra para modo difícil com símbolo O (bot começa)
     if (selectedDifficulty === "Dificil" && selectedMark === "O") {
       Alert.alert(
-        "Modo Desafiador",
-        "Jogar como 'O' no modo Difícil é muito desafiador! O bot jogará primeiro e é quase perfeito. Tens a certeza?",
+        "Modo Desafiador", // Título
+        "Jogar como 'O' no modo Difícil é muito desafiador! O bot jogará primeiro e é quase perfeito. Tens a certeza?", // Mensagem
         [
-          { text: "Voltar", style: "cancel" },
+          { text: "Voltar", style: "cancel" }, // Botão cancelar
           { 
             text: "Sim, Aceito o Desafio!", 
-            style: "destructive",
-            onPress: () => onChoose({ mark: selectedMark, difficulty: selectedDifficulty })
+            style: "destructive", // Estilo destrutivo para ação perigosa
+            onPress: () => onChoose({ 
+              mark: selectedMark, 
+              difficulty: selectedDifficulty 
+            })
           },
         ]
       );
     } else {
-      onChoose({ mark: selectedMark, difficulty: selectedDifficulty });
+      // Inicia o jogo diretamente para outros casos
+      onChoose({ 
+        mark: selectedMark, 
+        difficulty: selectedDifficulty 
+      });
     }
-  }, [selectedMark, selectedDifficulty, onChoose]);
+  }, [selectedMark, selectedDifficulty, onChoose]); // Dependências estáveis
 
-  // Handler para seleção de símbolo
-  const handleMarkSelection = useCallback((mark: "X" | "O") => {
-    setSelectedMark(mark);
-    // Feedback visual imediato
-    if (Platform.OS !== 'web') {
-      Vibration.vibrate(25);
-    }
-  }, []);
+  // =============================================================
+  // FUNÇÕES DE RENDERIZAÇÃO (useCallback para performance)
+  // =============================================================
 
-  // Handler para seleção de dificuldade
-  const handleDifficultySelection = useCallback((difficulty: BotDifficulty) => {
-    setSelectedDifficulty(difficulty);
-    // Feedback visual imediato
-    if (Platform.OS !== 'web') {
-      Vibration.vibrate(25);
-    }
-  }, []);
-
-  // Renderização do seletor de símbolo
+  /**
+   * Renderiza o seletor de símbolos (X ou O)
+   */
   const renderMarkSelector = useCallback(() => (
     <View style={styles.section}>
+      {/* Título da secção */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         Escolhe o Teu Símbolo
       </Text>
+      
+      {/* Descrição informativa */}
       <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
         💡 Lembra-te: O jogador 'X' começa sempre o jogo!
       </Text>
       
+      {/* Container dos símbolos */}
       <View style={styles.markSelectionContainer}>
+        
         {/* Opção X */}
         <TouchableOpacity
-          onPress={() => handleMarkSelection("X")}
+          onPress={() => handleMarkSelection("X")} // Define X como selecionado
           style={[
             styles.markOption,
             { 
               backgroundColor: colors.card, 
               borderColor: colors.border,
-              // Destaque quando selecionado
+              // ✅ Efeito visual quando selecionado
               ...(selectedMark === "X" && {
-                borderColor: colors.primary,
-                backgroundColor: darkMode ? '#1e3a8a' : '#dbeafe',
+                borderColor: colors.primary, // Borda colorida
+                backgroundColor: darkMode ? '#1e3a8a' : '#dbeafe', // Fundo destacado
               })
             },
           ]}
-          accessibilityRole="button"
+          accessibilityRole="button" // Semântica de acessibilidade
           accessibilityLabel="Escolher símbolo X, começas primeiro"
-          accessibilityState={{ selected: selectedMark === "X" }}
+          accessibilityState={{ selected: selectedMark === "X" }} // Estado para leitores de ecrã
         >
+          {/* Símbolo grande */}
           <Text style={[
             styles.markSymbol, 
             { color: selectedMark === "X" ? colors.primary : colors.text }
           ]}>
             X
           </Text>
+          
+          {/* Label descritivo */}
           <Text style={[
             styles.markLabel, 
             { color: selectedMark === "X" ? colors.primary : colors.text }
           ]}>
             Jogar como X
           </Text>
+          
+          {/* Nota informativa */}
           <Text style={[styles.markDescription, { color: colors.textSecondary }]}>
             Começas primeiro
           </Text>
@@ -134,71 +196,82 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
 
         {/* Opção O */}
         <TouchableOpacity
-          onPress={() => handleMarkSelection("O")}
+          onPress={() => handleMarkSelection("O")} // Define O como selecionado
           style={[
             styles.markOption,
             { 
               backgroundColor: colors.card, 
               borderColor: colors.border,
-              // Destaque quando selecionado
+              // ✅ Efeito visual quando selecionado
               ...(selectedMark === "O" && {
-                borderColor: colors.primary,
-                backgroundColor: darkMode ? '#1e3a8a' : '#dbeafe',
+                borderColor: colors.primary, // Borda colorida
+                backgroundColor: darkMode ? '#1e3a8a' : '#dbeafe', // Fundo destacado
               })
             },
           ]}
-          accessibilityRole="button"
+          accessibilityRole="button" // Semântica de acessibilidade
           accessibilityLabel="Escolher símbolo O, bot começa primeiro"
-          accessibilityState={{ selected: selectedMark === "O" }}
+          accessibilityState={{ selected: selectedMark === "O" }} // Estado para leitores de ecrã
         >
+          {/* Símbolo grande */}
           <Text style={[
             styles.markSymbol, 
             { color: selectedMark === "O" ? colors.primary : colors.text }
           ]}>
             O
           </Text>
+          
+          {/* Label descritivo */}
           <Text style={[
             styles.markLabel, 
             { color: selectedMark === "O" ? colors.primary : colors.text }
           ]}>
             Jogar como O
           </Text>
+          
+          {/* Nota informativa */}
           <Text style={[styles.markDescription, { color: colors.textSecondary }]}>
             Bot começa primeiro
           </Text>
         </TouchableOpacity>
       </View>
     </View>
-  ), [colors, darkMode, selectedMark, handleMarkSelection]);
+  ), [colors, darkMode, selectedMark, handleMarkSelection]); // Dependências estáveis
 
-  // Renderização do seletor de dificuldade
+  /**
+   * Renderiza o seletor de dificuldade do bot
+   */
   const renderDifficultySelector = useCallback(() => (
     <View style={styles.section}>
+      {/* Título da secção */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         Nível de Dificuldade
       </Text>
       
+      {/* Container das opções de dificuldade */}
       <View style={styles.difficultyContainer}>
+        {/* Mapeia cada dificuldade disponível */}
         {(["Facil", "Medio", "Dificil"] as BotDifficulty[]).map((difficulty) => (
           <TouchableOpacity
-            key={difficulty}
-            onPress={() => handleDifficultySelection(difficulty)}
+            key={difficulty} // Chave única para React
+            onPress={() => handleDifficultySelection(difficulty)} // Define dificuldade
             style={[
               styles.difficultyOption,
               { 
                 backgroundColor: colors.card, 
                 borderColor: colors.border,
-                // Destaque quando selecionado
+                // ✅ Efeito visual quando selecionado
                 ...(selectedDifficulty === difficulty && {
-                  borderColor: colors.primary,
-                  backgroundColor: darkMode ? '#1e3a8a' : '#dbeafe',
+                  borderColor: colors.primary, // Borda colorida
+                  backgroundColor: darkMode ? '#1e3a8a' : '#dbeafe', // Fundo destacado
                 })
               },
             ]}
-            accessibilityRole="button"
+            accessibilityRole="button" // Semântica de acessibilidade
             accessibilityLabel={`Dificuldade ${difficulty}`}
-            accessibilityState={{ selected: selectedDifficulty === difficulty }}
+            accessibilityState={{ selected: selectedDifficulty === difficulty }} // Estado para leitores de ecrã
           >
+            {/* Título da dificuldade com emoji */}
             <Text style={[
               styles.difficultyTitle,
               { color: selectedDifficulty === difficulty ? colors.primary : colors.text }
@@ -206,6 +279,8 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
               {difficulty === "Facil" ? "🥉 Fácil" : 
                difficulty === "Medio" ? "🥈 Médio" : "🥇 Difícil"}
             </Text>
+            
+            {/* Descrição detalhada da dificuldade */}
             <Text style={[styles.difficultyDescription, { color: colors.textSecondary }]}>
               {DIFFICULTY_DESCRIPTIONS[difficulty]}
             </Text>
@@ -213,15 +288,18 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
         ))}
       </View>
     </View>
-  ), [colors, darkMode, selectedDifficulty, handleDifficultySelection]);
+  ), [colors, darkMode, selectedDifficulty, handleDifficultySelection]); // Dependências estáveis
 
+  // =============================================================
+  // RENDERIZAÇÃO PRINCIPAL DO COMPONENTE
+  // =============================================================
   return (
     <ScrollView 
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
+      style={[styles.container, { backgroundColor: colors.background }]} // Fundo do tema
+      contentContainerStyle={styles.scrollContent} // Estilo do conteúdo scrollável
+      showsVerticalScrollIndicator={false} // Esconde a barra de scroll vertical
     >
-      {/* Cabeçalho */}
+      {/* Cabeçalho do ecrã */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>
           Modo Singleplayer
@@ -231,12 +309,15 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
         </Text>
       </View>
 
-      {/* Conteúdo */}
+      {/* Secção de seleção de símbolo */}
       {renderMarkSelector()}
+      
+      {/* Secção de seleção de dificuldade */}
       {renderDifficultySelector()}
 
-      {/* Ações */}
+      {/* Área de ações (botões) */}
       <View style={styles.actions}>
+        {/* Botão Voltar */}
         <TouchableOpacity
           style={[
             styles.actionButton,
@@ -245,7 +326,7 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
               borderColor: colors.border 
             }
           ]}
-          onPress={onBack}
+          onPress={onBack} // Volta ao ecrã anterior
           accessibilityRole="button"
           accessibilityLabel="Voltar ao menu anterior"
         >
@@ -254,24 +335,27 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
           </Text>
         </TouchableOpacity>
 
+        {/* Botão Começar Jogo */}
         <TouchableOpacity
           style={[
             styles.actionButton,
             { 
+              // ✅ Cor diferente consoante o estado (selecionado/não selecionado)
               backgroundColor: selectedMark ? colors.primary : colors.muted,
               borderColor: selectedMark ? colors.primary : colors.border,
             },
+            // ✅ Estilo desativado quando não há símbolo selecionado
             !selectedMark && styles.actionButtonDisabled
           ]}
-          onPress={handleStartGame}
-          disabled={!selectedMark}
+          onPress={handleStartGame} // Inicia o jogo
+          disabled={!selectedMark} // Desativa se não houver símbolo selecionado
           accessibilityRole="button"
           accessibilityLabel={selectedMark ? "Começar jogo" : "Seleciona um símbolo para começar"}
-          accessibilityState={{ disabled: !selectedMark }}
+          accessibilityState={{ disabled: !selectedMark }} // Estado para leitores de ecrã
         >
           <Text style={[
             styles.actionButtonText, 
-            { color: selectedMark ? colors.card : colors.text }
+            { color: selectedMark ? colors.card : colors.text } // Cor do texto consoante estado
           ]}>
             🚀 Começar Jogo
           </Text>
@@ -281,52 +365,65 @@ export default function SinglePlayer({ onChoose, onBack }: Props) {
   );
 }
 
-// Estilos melhorados com design mais moderno
+// =============================================================
+// ESTILOS DO COMPONENTE
+// =============================================================
 const styles = StyleSheet.create({
+  // Container principal
   container: {
-    flex: 1,
+    flex: 1, // Ocupa todo o espaço disponível
   },
+  // Conteúdo do ScrollView
   scrollContent: {
-    padding: 20,
-    paddingTop: 40,
+    padding: 20, // Espaçamento interno
+    paddingTop: 40, // Espaçamento superior extra
   },
+  // Cabeçalho
   header: {
-    alignItems: "center",
-    marginBottom: 40,
+    alignItems: "center", // Centraliza horizontalmente
+    marginBottom: 40, // Espaço abaixo
   },
+  // Título principal
   title: {
-    fontSize: 28,
-    fontWeight: "800",
-    marginBottom: 8,
-    textAlign: "center",
+    fontSize: 28, // Tamanho grande
+    fontWeight: "800", // Negrito forte
+    marginBottom: 8, // Espaço abaixo
+    textAlign: "center", // Texto centralizado
   },
+  // Subtítulo
   subtitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    textAlign: "center",
+    fontSize: 16, // Tamanho médio
+    fontWeight: "500", // Negrito médio
+    textAlign: "center", // Texto centralizado
   },
+  // Secção genérica
   section: {
-    marginBottom: 32,
+    marginBottom: 32, // Espaço entre secções
   },
+  // Título da secção
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 8,
+    fontSize: 20, // Tamanho médio-grande
+    fontWeight: "700", // Negrito
+    marginBottom: 8, // Espaço abaixo
   },
+  // Descrição da secção
   sectionDescription: {
-    fontSize: 14,
-    marginBottom: 16,
+    fontSize: 14, // Tamanho pequeno
+    marginBottom: 16, // Espaço abaixo
   },
+  // Container da seleção de símbolos
   markSelectionContainer: {
-    flexDirection: "row",
-    gap: 16,
+    flexDirection: "row", // Layout horizontal
+    gap: 16, // Espaço entre elementos (React Native 0.71+)
   },
+  // Opção de símbolo (X ou O)
   markOption: {
-    flex: 1,
-    borderWidth: 2,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: "center",
+    flex: 1, // Ocupa espaço igual
+    borderWidth: 2, // Borda grossa
+    borderRadius: 16, // Cantos muito arredondados
+    padding: 20, // Espaçamento interno
+    alignItems: "center", // Centraliza conteúdo
+    // Sombra para efeito de profundidade
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -334,29 +431,35 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 3,
-    elevation: 3,
+    elevation: 3, // Sombra no Android
   },
+  // Símbolo (X ou O grande)
   markSymbol: {
-    fontSize: 42,
-    fontWeight: "900",
-    marginBottom: 8,
+    fontSize: 42, // Tamanho muito grande
+    fontWeight: "900", // Negrito máximo
+    marginBottom: 8, // Espaço abaixo
   },
+  // Label do símbolo
   markLabel: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 4,
+    fontSize: 16, // Tamanho médio
+    fontWeight: "700", // Negrito
+    marginBottom: 4, // Espaço abaixo
   },
+  // Descrição do símbolo
   markDescription: {
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: 12, // Tamanho pequeno
+    fontWeight: "500", // Negrito médio
   },
+  // Container das dificuldades
   difficultyContainer: {
-    gap: 12,
+    gap: 12, // Espaço entre opções
   },
+  // Opção de dificuldade
   difficultyOption: {
-    borderWidth: 2,
-    borderRadius: 12,
-    padding: 16,
+    borderWidth: 2, // Borda grossa
+    borderRadius: 12, // Cantos arredondados
+    padding: 16, // Espaçamento interno
+    // Sombra suave
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -364,36 +467,42 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    elevation: 2,
+    elevation: 2, // Sombra no Android
   },
+  // Título da dificuldade
   difficultyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 4,
+    fontSize: 18, // Tamanho médio-grande
+    fontWeight: "700", // Negrito
+    marginBottom: 4, // Espaço abaixo
   },
+  // Descrição da dificuldade
   difficultyDescription: {
-    fontSize: 14,
-    fontWeight: "400",
+    fontSize: 14, // Tamanho pequeno
+    fontWeight: "400", // Peso normal
   },
+  // Container dos botões de ação
   actions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 20,
-    marginBottom: 40,
+    flexDirection: "row", // Layout horizontal
+    gap: 12, // Espaço entre botões
+    marginTop: 20, // Espaço acima
+    marginBottom: 40, // Espaço abaixo
   },
+  // Botão de ação genérico
   actionButton: {
-    flex: 1,
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    alignItems: "center",
+    flex: 1, // Ocupa espaço igual
+    borderWidth: 2, // Borda grossa
+    borderRadius: 12, // Cantos arredondados
+    paddingVertical: 16, // Espaçamento vertical
+    paddingHorizontal: 20, // Espaçamento horizontal
+    alignItems: "center", // Centraliza texto
   },
+  // Estado desativado do botão
   actionButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.6, // Transparência para indicar desativado
   },
+  // Texto do botão de ação
   actionButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 16, // Tamanho médio
+    fontWeight: "700", // Negrito
   },
 });

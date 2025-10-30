@@ -1,491 +1,503 @@
 // src/screens/Game.tsx
-// ---------------------------------------------------------------
-// Ecrã principal do jogo do galo com melhorias de performance,
-// acessibilidade, feedback visual e gestão de estado otimizada.
-// ---------------------------------------------------------------
+// =============================================================
+// ECRÃ PRINCIPAL DO JOGO - LÓGICA DO JOGO DO GALO
+// =============================================================
 
+// Importa React e todos os hooks necessários
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+// Importa componentes do React Native
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Alert,
-  Animated,
-  Vibration,
-  Platform
+  Platform,    // ✅ CORREÇÃO: Importar Platform para detetar o SO
+  Vibration    // ✅ CORREÇÃO: Importar Vibration para feedback tátil
 } from "react-native";
+// Importa o sistema de temas para cores consistentes
 import { useTheme } from "../theme/Theme";
-
 // Importa tipos e funções auxiliares do tabuleiro
 import { Board, makeEmptyBoard, isBoardFull, cloneBoard } from "../utils/board";
-
 // Importa lógica do bot e função de verificação do vencedor
 import { BotDifficulty, chooseBotMoveByDifficulty, getWinner } from "../ai/bot";
 
-// ---------------------------------------------------------------
-// Tipagem das props recebidas pelo componente
-// ---------------------------------------------------------------
+// =============================================================
+// DEFINIÇÃO DAS PROPRIEDADES DO COMPONENTE
+// =============================================================
 type Props = {
-  onWin?: () => void;                             // Callback para vitória do jogador
+  onWin?: () => void;                             // Callback para vitória do jogador humano
   onDraw?: () => void;                            // Callback para empate
-  onLoss?: () => void;                            // Callback para derrota do jogador
+  onLoss?: () => void;                            // Callback para derrota do jogador humano
   onExit?: () => void;                            // Callback para sair do jogo
   onGameEnd?: (winner: "X" | "O" | null) => void; // Callback genérico para fim de jogo
-  botEnabled?: boolean;                           // Flag para modo singleplayer
+  botEnabled?: boolean;                           // Flag para modo singleplayer (vs bot)
   botMark?: "X" | "O";                            // Símbolo do bot
   humanMark?: "X" | "O";                          // Símbolo do jogador humano
   botDifficulty?: BotDifficulty;                  // Dificuldade do bot
 };
 
-// ---------------------------------------------------------------
-// Componente principal do jogo com melhorias
-// ---------------------------------------------------------------
+// =============================================================
+// COMPONENTE PRINCIPAL - GAME SCREEN
+// =============================================================
 export default function Game({
+  // Valores padrão para props opcionais
   onWin,
   onDraw,
   onLoss,
   onExit,
   onGameEnd,
-  botEnabled = false,
-  botMark = "O",
-  humanMark = "X",
-  botDifficulty = "Medio",
+  botEnabled = false,           // Por padrão, modo multiplayer
+  botMark = "O",                // Por padrão, bot é O
+  humanMark = "X",              // Por padrão, humano é X
+  botDifficulty = "Medio",      // Por padrão, dificuldade média
 }: Props) {
-  // Acede às cores do tema global
+  // =============================================================
+  // HOOKS E ESTADOS
+  // =============================================================
+  
+  // Obtém as cores do tema atual
   const { colors } = useTheme();
 
   // Estado do tabuleiro (matriz 3x3)
   const [board, setBoard] = useState<Board>(makeEmptyBoard());
+  
   // Estado do turno atual ("X" ou "O")
   const [turn, setTurn] = useState<"X" | "O">("X");
-  // Estado para controlar se o bot está a processar
-  const [isBotProcessing, setIsBotProcessing] = useState(false);
 
-  // Refs que guardam callbacks atuais (evita dependências nos useEffect)
+  // =============================================================
+  // REFS PARA CALLBACKS (evitam loops de renderização)
+  // =============================================================
+  
+  // ✅ CORREÇÃO: useRef para callbacks que não devem causar re-renders
   const onWinRef = useRef(onWin);
   const onDrawRef = useRef(onDraw);
   const onLossRef = useRef(onLoss);
   const onGameEndRef = useRef(onGameEnd);
 
-  // Animação para feedback visual das células
-  const cellAnimations = useRef<Animated.Value[][]>(
-    Array(3).fill(0).map(() => 
-      Array(3).fill(0).map(() => new Animated.Value(0))
-    )
-  ).current;
+  // =============================================================
+  // EFFECTS PARA SINCRONIZAÇÃO DE REFS
+  // =============================================================
+  
+  // ✅ CORREÇÃO: Atualizar refs quando props mudam (sem causar re-render)
+  useEffect(() => { 
+    onWinRef.current = onWin; 
+  }, [onWin]);
 
-  // Mantém as referências sincronizadas quando as props mudam
-  useEffect(() => { onWinRef.current = onWin; }, [onWin]);
-  useEffect(() => { onDrawRef.current = onDraw; }, [onDraw]);
-  useEffect(() => { onLossRef.current = onLoss; }, [onLoss]);
-  useEffect(() => { onGameEndRef.current = onGameEnd; }, [onGameEnd]);
+  useEffect(() => { 
+    onDrawRef.current = onDraw; 
+  }, [onDraw]);
 
-  // Calcula o vencedor e estado do tabuleiro (memorizado para performance)
-  const { winner, isFull, gameStatus } = useMemo(() => {
-    const currentWinner = getWinner(board);
-    const currentIsFull = isBoardFull(board);
-    
-    let status = "playing";
-    if (currentWinner) status = "winner";
-    else if (currentIsFull) status = "draw";
-    
-    return {
-      winner: currentWinner,
-      isFull: currentIsFull,
-      gameStatus: status as "playing" | "winner" | "draw"
-    };
-  }, [board]);
+  useEffect(() => { 
+    onLossRef.current = onLoss; 
+  }, [onLoss]);
 
-  // Guarda o último resultado notificado para evitar repetições
+  useEffect(() => { 
+    onGameEndRef.current = onGameEnd; 
+  }, [onGameEnd]);
+
+  // =============================================================
+  // MEMOIZED VALUES (valores calculados com useMemo para performance)
+  // =============================================================
+  
+  // ✅ CORREÇÃO: useMemo para calcular o vencedor (evita cálculos desnecessários)
+  const winner = useMemo(() => getWinner(board), [board]);
+  
+  // ✅ CORREÇÃO: useMemo para verificar se o tabuleiro está cheio
+  const isFull = useMemo(() => isBoardFull(board), [board]);
+
+  // =============================================================
+  // REFS PARA CONTROLO DE ESTADO INTERNO (não causam re-renders)
+  // =============================================================
+  
+  // Controla se já foi notificado o fim do jogo (evita notificações duplicadas)
   const endNotifiedRef = useRef<null | "X" | "O" | "draw">(null);
+  
+  // Controla se o bot está atualmente a "pensar" (evita jogadas múltiplas)
+  const botThinkingRef = useRef(false);
 
-  // ---------------------------------------------------------------
-  // Efeito: Gestão do fim do jogo e callbacks
-  // ---------------------------------------------------------------
+  // =============================================================
+  // EFFECT PRINCIPAL - GESTÃO DO FIM DO JOGO
+  // =============================================================
+  
+  /**
+   * Effect que trata do fim do jogo (vitória/empate)
+   * ✅ CORREÇÃO: Dependências mínimas e estáveis
+   */
   useEffect(() => {
-    // Se o jogo ainda não terminou, limpa estado anterior e sai
-    if (gameStatus === "playing") {
+    // Se o jogo ainda não terminou, limpa o estado de notificação e sai
+    if (!winner && !isFull) {
       endNotifiedRef.current = null;
       return;
     }
 
-    // Cria chave do resultado final
+    // Cria uma chave única para o resultado atual
     const endKey: "X" | "O" | "draw" = winner ? winner : "draw";
 
-    // Se já foi notificado esse mesmo resultado, ignora
+    // Se já foi notificado este mesmo resultado, ignora (evita duplicados)
     if (endNotifiedRef.current === endKey) return;
+    
+    // Marca que este resultado já foi notificado
     endNotifiedRef.current = endKey;
 
-    // Notifica o componente pai (App.tsx)
+    // Notifica o componente pai sobre o fim do jogo
     onGameEndRef.current?.(winner ?? null);
 
-    // Atualiza estatísticas baseadas no resultado
+    // Atualiza estatísticas conforme o resultado
     if (winner === humanMark) {
+      // Jogador humano venceu
       onWinRef.current?.();
-      // Feedback de vitória
-      if (Platform.OS !== 'web') {
-        Vibration.vibrate([0, 100, 50, 100]);
+      
+      // ✅ CORREÇÃO: Feedback tátil de vitória (apenas em mobile)
+      if (Platform && Platform.OS !== 'web') {
+        Vibration.vibrate([0, 100, 50, 100]); // Padrão: vibra-curto-pausa-vibra-curto
       }
     } else if (winner === botMark) {
+      // Bot venceu (derrota do humano)
       onLossRef.current?.();
-      // Feedback de derrota
-      if (Platform.OS !== 'web') {
-        Vibration.vibrate(200);
+      
+      // ✅ CORREÇÃO: Feedback tátil de derrota (apenas em mobile)
+      if (Platform && Platform.OS !== 'web') {
+        Vibration.vibrate(200); // Vibração longa
       }
-    } else if (gameStatus === "draw") {
+    } else if (!winner) {
+      // Empate
       onDrawRef.current?.();
-      // Feedback de empate
-      if (Platform.OS !== 'web') {
-        Vibration.vibrate(100);
+      
+      // ✅ CORREÇÃO: Feedback tátil de empate (apenas em mobile)
+      if (Platform && Platform.OS !== 'web') {
+        Vibration.vibrate(100); // Vibração média
       }
     }
-  }, [gameStatus, winner, humanMark, botMark]);
+  }, [winner, isFull, humanMark, botMark]); // ✅ Dependências estáveis
 
-  // ---------------------------------------------------------------
-  // Efeito: Execução da jogada do bot
-  // ---------------------------------------------------------------
+  // =============================================================
+  // EFFECT DO BOT - LÓGICA DE JOGADA AUTOMÁTICA
+  // =============================================================
+  
+  /**
+   * Effect que controla as jogadas do bot
+   * ✅ CORREÇÃO CRÍTICA: Condições de saída claras e cleanup adequado
+   */
   useEffect(() => {
-    // Condições para o bot não jogar
-    if (!botEnabled || 
-        gameStatus !== "playing" || 
-        turn !== botMark || 
-        isBotProcessing) {
-      return;
-    }
+    // =============================================================
+    // CONDIÇÕES DE SAÍDA ANTECIPADA
+    // =============================================================
+    
+    // 1. Se o bot não está ativado, sai
+    if (!botEnabled) return;
+    
+    // 2. Se o jogo já terminou (vencedor ou empate), sai
+    if (winner || isFull) return;
+    
+    // 3. Se não é a vez do bot, sai
+    if (turn !== botMark) return;
+    
+    // 4. Se o bot já está a processar uma jogada, sai
+    if (botThinkingRef.current) return;
 
-    // Marca que o bot está a processar
-    setIsBotProcessing(true);
+    // =============================================================
+    // LÓGICA DE JOGADA DO BOT
+    // =============================================================
+    
+    // Marca que o bot começou a processar
+    botThinkingRef.current = true;
 
-    // Pequeno atraso para melhor UX (parece que o bot "pensa")
-    const botDelay = setTimeout(() => {
+    // Cria um timeout para simular "pensamento" do bot
+    const timer = setTimeout(() => {
       try {
-        // Escolhe uma jogada de acordo com a dificuldade
-        const move = chooseBotMoveByDifficulty(board, botDifficulty, botMark, humanMark);
+        // Pede ao bot uma jogada baseada na dificuldade atual
+        const move = chooseBotMoveByDifficulty(
+          board, 
+          botDifficulty, 
+          botMark, 
+          humanMark
+        );
 
-        // Se existir jogada válida, aplica-a
+        // Se o bot encontrou uma jogada válida
         if (move) {
-          const [r, c] = move;
-          const next = cloneBoard(board);
-          if (next[r][c] === null) {
-            next[r][c] = botMark;
-            setBoard(next);
-            setTurn(humanMark);
-            
-            // Anima a jogada do bot
-            animateCell(r, c);
+          const [row, col] = move; // Desestrutura as coordenadas
+          const newBoard = cloneBoard(board); // Cria cópia do tabuleiro
+          
+          // Verifica se a célula ainda está vazia (double-check)
+          if (newBoard[row][col] === null) {
+            newBoard[row][col] = botMark; // Faz a jogada do bot
+            setBoard(newBoard);           // Atualiza o estado do tabuleiro
+            setTurn(humanMark);           // Passa a vez para o jogador humano
           }
         }
       } catch (error) {
+        // ✅ CORREÇÃO: Captura erros para evitar crashes
         console.error("Erro na jogada do bot:", error);
       } finally {
-        setIsBotProcessing(false);
+        // ✅ CORREÇÃO CRÍTICA: Garante que o bot é libertado mesmo com erro
+        botThinkingRef.current = false;
       }
-    }, 350); // Delay aumentado para melhor experiência
+    }, 350); // Delay de 350ms para parecer mais natural
 
-    // Cleanup do timeout
+    // =============================================================
+    // CLEANUP FUNCTION (executada quando o effect é limpo)
+    // =============================================================
     return () => {
-      clearTimeout(botDelay);
-      setIsBotProcessing(false);
+      clearTimeout(timer); // Cancela o timeout se o component desmontar
+      botThinkingRef.current = false; // Garante que o bot é libertado
     };
-  }, [botEnabled, turn, botMark, humanMark, board, gameStatus, botDifficulty, isBotProcessing]);
+  }, [
+    botEnabled,     // Quando o modo bot é ativado/desativado
+    turn,           // Quando o turno muda
+    board,          // Quando o tabuleiro muda (necessário para o bot)
+    winner,         // Quando há um vencedor
+    isFull,         // Quando o tabuleiro enche
+    botDifficulty,  // Quando a dificuldade muda
+    botMark,        // Quando o símbolo do bot muda
+    humanMark       // Quando o símbolo do humano muda
+  ]);
 
-  // ---------------------------------------------------------------
-  // Função para animar uma célula quando é preenchida
-  // ---------------------------------------------------------------
-  const animateCell = useCallback((row: number, col: number) => {
-    Animated.sequence([
-      Animated.timing(cellAnimations[row][col], {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(cellAnimations[row][col], {
-        toValue: 0.8,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [cellAnimations]);
+  // =============================================================
+  // FUNÇÕES DE MANIPULAÇÃO (useCallback para performance)
+  // =============================================================
 
-  // ---------------------------------------------------------------
-  // Handler quando o jogador toca numa célula
-  // ---------------------------------------------------------------
+  /**
+   * Manipula o toque do jogador numa célula do tabuleiro
+   * @param row - Linha da célula (0-2)
+   * @param col - Coluna da célula (0-2)
+   */
   const handleCellPress = useCallback((row: number, col: number) => {
-    // Validações de estado do jogo
-    if (gameStatus !== "playing") return;
+    // =============================================================
+    // VALIDAÇÕES DE ESTADO DO JOGO
+    // =============================================================
+    
+    // 1. Se já há um vencedor, ignora o toque
+    if (winner) return;
+    
+    // 2. Em modo bot, se não é a vez do humano, ignora
     if (botEnabled && turn !== humanMark) return;
+    
+    // 3. Se a célula já está ocupada, ignora
     if (board[row][col] !== null) return;
 
-    // Cria nova versão do tabuleiro e aplica a jogada
-    const newBoard = cloneBoard(board);
-    newBoard[row][col] = turn;
+    // =============================================================
+    // EXECUÇÃO DA JOGADA
+    // =============================================================
     
-    // Atualiza estado
-    setBoard(newBoard);
-    setTurn(turn === "X" ? "O" : "X");
+    const newBoard = cloneBoard(board); // Cria cópia do tabuleiro
+    newBoard[row][col] = turn;          // Marca a jogada do jogador atual
     
-    // Feedback visual e tátil
-    animateCell(row, col);
-    if (Platform.OS !== 'web') {
-      Vibration.vibrate(50);
+    setBoard(newBoard);                 // Atualiza o estado do tabuleiro
+    setTurn(turn === "X" ? "O" : "X");  // Alterna o turno
+
+    // ✅ CORREÇÃO: Feedback tátil para jogada (apenas em mobile)
+    if (Platform && Platform.OS !== 'web') {
+      Vibration.vibrate(50); // Vibração curta
     }
-  }, [board, turn, humanMark, botEnabled, gameStatus, animateCell]);
+  }, [board, turn, humanMark, botEnabled, winner]); // Dependências estáveis
 
-  // ---------------------------------------------------------------
-  // Reinicia o jogo completo
-  // ---------------------------------------------------------------
+  /**
+   * Reinicia o jogo para o estado inicial
+   */
   const handleResetGame = useCallback(() => {
-    setBoard(makeEmptyBoard());
-    setTurn("X");
-    setIsBotProcessing(false);
-    endNotifiedRef.current = null;
-    
-    // Reseta animações
-    cellAnimations.forEach(row => {
-      row.forEach(anim => anim.setValue(0));
-    });
-  }, [cellAnimations]);
+    setBoard(makeEmptyBoard());     // Tabuleiro vazio
+    setTurn("X");                   // X começa sempre
+    botThinkingRef.current = false; // Liberta o bot
+    endNotifiedRef.current = null;  // Reseta notificações
+  }, []); // Nenhuma dependência - função estável
 
-  // ---------------------------------------------------------------
-  // Confirmação para sair do jogo
-  // ---------------------------------------------------------------
-  const handleExitConfirmation = useCallback(() => {
+  /**
+   * Mostra confirmação para sair do jogo
+   */
+  const handleExitGame = useCallback(() => {
     Alert.alert(
-      "Sair do Jogo",
-      "Tens a certeza que queres sair? O progresso atual será perdido.",
+      "Sair do Jogo",           // Título
+      "Queres sair do jogo?",   // Mensagem
       [
         { 
-          text: "Continuar a Jogar", 
-          style: "cancel" 
+          text: "Cancelar", 
+          style: "cancel"       // Botão neutro
         },
         { 
           text: "Sair", 
-          style: "destructive", 
-          onPress: () => onExit?.() 
+          style: "destructive", // Botão de ação perigosa
+          onPress: () => onExit?.() // Executa callback se fornecido
         },
       ]
     );
-  }, [onExit]);
+  }, [onExit]); // Dependência estável
 
-  // ---------------------------------------------------------------
-  // Renderização do estado atual do jogo
-  // ---------------------------------------------------------------
-  const renderGameStatus = useCallback(() => {
-    if (gameStatus === "winner") {
-      return (
-        <Text style={[styles.statusText, { color: colors.success }]}>
-          🎉 Vencedor: {winner} {botEnabled && winner === botMark ? "(Bot)" : ""}
-        </Text>
-      );
-    }
-    
-    if (gameStatus === "draw") {
-      return (
-        <Text style={[styles.statusText, { color: colors.warning }]}>
-          🤝 Empate!
-        </Text>
-      );
-    }
-    
-    return (
-      <Text style={[styles.statusText, { color: colors.text }]}>
-        {isBotProcessing && turn === botMark ? "🤖 Bot a pensar..." : `Vez do: ${turn}`}
-        {botEnabled && turn === botMark ? " (Bot)" : ""}
-      </Text>
-    );
-  }, [gameStatus, winner, turn, botEnabled, botMark, colors, isBotProcessing]);
-
-  // ---------------------------------------------------------------
-  // Renderização do tabuleiro
-  // ---------------------------------------------------------------
-  const renderBoard = useCallback(() => {
-    return (
-      <View style={styles.boardContainer}>
-        {board.map((row, rowIndex) => (
-          <View key={`row-${rowIndex}`} style={styles.row}>
-            {row.map((cell, colIndex) => {
-              const isDisabled = cell !== null || gameStatus !== "playing" || 
-                               (botEnabled && turn !== humanMark);
-              
-              const scaleAnim = cellAnimations[rowIndex][colIndex].interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1.1]
-              });
-
-              return (
-                <TouchableOpacity
-                  key={`cell-${rowIndex}-${colIndex}`}
-                  style={[
-                    styles.cell,
-                    { 
-                      borderColor: colors.border,
-                      backgroundColor: cell ? colors.primary : colors.card,
-                    },
-                    isDisabled && styles.cellDisabled,
-                  ]}
-                  onPress={() => handleCellPress(rowIndex, colIndex)}
-                  disabled={isDisabled}
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    cell ? 
-                    `Célula ${rowIndex + 1},${colIndex + 1} com ${cell}` : 
-                    `Célula vazia ${rowIndex + 1},${colIndex + 1}`
-                  }
-                  accessibilityState={{ disabled: isDisabled }}
-                >
-                  <Animated.Text 
-                    style={[
-                      styles.cellText, 
-                      { 
-                        color: cell ? colors.card : colors.text,
-                        transform: [{ scale: scaleAnim }]
-                      }
-                    ]}
-                  >
-                    {cell || ""}
-                  </Animated.Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
-      </View>
-    );
-  }, [board, colors, gameStatus, botEnabled, turn, humanMark, cellAnimations, handleCellPress]);
-
-  // ---------------------------------------------------------------
-  // Renderização principal
-  // ---------------------------------------------------------------
+  // =============================================================
+  // RENDERIZAÇÃO PRINCIPAL DO COMPONENTE
+  // =============================================================
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       
-      {/* Cabeçalho com título e informações */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Jogo do Galo</Text>
-        
-        {botEnabled && (
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Tu: {humanMark} • Bot: {botMark} • {botDifficulty}
-          </Text>
-        )}
+      {/* ========================================================= */}
+      {/* CABEÇALHO - TÍTULO E INFORMAÇÕES */}
+      {/* ========================================================= */}
+      <Text style={[styles.title, { color: colors.text }]}>
+        Jogo do Galo
+      </Text>
+
+      {/* Informações de configuração (apenas em modo bot) */}
+      {botEnabled && (
+        <Text style={[styles.roles, { color: colors.text }]}>
+          Tu: {humanMark} • Bot: {botMark} • Dificuldade: {botDifficulty}
+        </Text>
+      )}
+
+      {/* ========================================================= */}
+      {/* STATUS DO JOGO */}
+      {/* ========================================================= */}
+      
+      {/* Mensagem de vez/turno atual */}
+      {!winner && !isFull && (
+        <Text style={[styles.info, { color: colors.text }]}>
+          Vez do: {turn} {botEnabled && turn === botMark ? "(bot)" : ""}
+        </Text>
+      )}
+      
+      {/* Mensagem de vitória */}
+      {winner && (
+        <Text style={[styles.info, { color: colors.text }]}>
+          Vencedor: {winner} {botEnabled && winner === botMark ? "(bot)" : ""}
+        </Text>
+      )}
+      
+      {/* Mensagem de empate */}
+      {!winner && isFull && (
+        <Text style={[styles.info, { color: colors.text }]}>
+          Empate
+        </Text>
+      )}
+
+      {/* ========================================================= */}
+      {/* TABULEIRO DO JOGO */}
+      {/* ========================================================= */}
+      <View style={styles.board}>
+        {/* Mapeia cada linha do tabuleiro */}
+        {board.map((row, rowIndex) => (
+          <View key={rowIndex} style={styles.row}>
+            {/* Mapeia cada célula da linha */}
+            {row.map((cell, colIndex) => (
+              <TouchableOpacity
+                key={`${rowIndex}-${colIndex}`} // Chave única baseada em coordenadas
+                style={[
+                  styles.cell,
+                  { 
+                    borderColor: colors.border,     // Cor da borda do tema
+                    backgroundColor: colors.card,   // Cor de fundo do tema
+                  },
+                ]}
+                onPress={() => handleCellPress(rowIndex, colIndex)} // Handler de toque
+              >
+                {/* Texto da célula (X, O ou vazio) */}
+                <Text style={[styles.cellText, { color: colors.text }]}>
+                  {cell ?? ""} {/* Mostra célula ou string vazia */}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ))}
       </View>
 
-      {/* Estado do jogo */}
-      <View style={styles.statusContainer}>
-        {renderGameStatus()}
-      </View>
-
-      {/* Tabuleiro */}
-      {renderBoard()}
-
-      {/* Controlos */}
-      <View style={styles.controls}>
+      {/* ========================================================= */}
+      {/* BOTÕES DE CONTROLO */}
+      {/* ========================================================= */}
+      <View style={styles.actions}>
+        {/* Botão Reiniciar */}
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={handleResetGame}
-          accessibilityRole="button"
-          accessibilityLabel="Reiniciar jogo"
+          style={[styles.button, { 
+            backgroundColor: colors.card, 
+            borderColor: colors.border 
+          }]}
+          onPress={handleResetGame} // Reinicia o jogo
         >
-          <Text style={[styles.buttonText, { color: colors.text }]}>🔄 Reiniciar</Text>
+          <Text style={[styles.buttonText, { color: colors.text }]}>
+            Reiniciar
+          </Text>
         </TouchableOpacity>
 
+        {/* Espaçamento entre botões */}
+        <View style={{ width: 12 }} />
+
+        {/* Botão Sair */}
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.error, borderColor: colors.error }]}
-          onPress={handleExitConfirmation}
-          accessibilityRole="button"
-          accessibilityLabel="Sair do jogo"
+          style={[styles.button, { 
+            backgroundColor: colors.card, 
+            borderColor: colors.border 
+          }]}
+          onPress={handleExitGame} // Mostra confirmação de saída
         >
-          <Text style={[styles.buttonText, { color: colors.card }]}>🚪 Sair</Text>
+          <Text style={[styles.buttonText, { color: colors.text }]}>
+            Sair
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-// ---------------------------------------------------------------
-// Estilos melhorados com melhor espaçamento e acessibilidade
-// ---------------------------------------------------------------
+// =============================================================
+// ESTILOS DO COMPONENTE
+// =============================================================
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    alignItems: "center",
-    justifyContent: "space-between",
+  // Container principal
+  container: { 
+    flex: 1,                    // Ocupa todo o espaço
+    padding: 16,                // Espaçamento interno
+    alignItems: "center",       // Centraliza horizontalmente
+    justifyContent: "center",   // Centraliza verticalmente
   },
-  header: {
-    alignItems: "center",
-    marginTop: 40,
-    marginBottom: 20,
+  // Título do jogo
+  title: { 
+    fontSize: 22,               // Tamanho grande
+    fontWeight: "700",          // Negrito
+    marginBottom: 4,            // Espaço abaixo
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "800",
-    marginBottom: 8,
+  // Informações de configuração (modo bot)
+  roles: { 
+    fontSize: 14,               // Tamanho pequeno
+    marginBottom: 8,            // Espaço abaixo
   },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: "600",
+  // Mensagens de status do jogo
+  info: { 
+    fontSize: 16,               // Tamanho médio
+    marginBottom: 12,           // Espaço abaixo
   },
-  statusContainer: {
-    marginVertical: 20,
-    minHeight: 40,
-    justifyContent: "center",
+  // Container do tabuleiro
+  board: {},
+  // Linha do tabuleiro
+  row: { 
+    flexDirection: "row"        // Layout horizontal
   },
-  statusText: {
-    fontSize: 18,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  boardContainer: {
-    backgroundColor: "transparent",
-    borderRadius: 12,
-    padding: 8,
-  },
-  row: {
-    flexDirection: "row",
-  },
+  // Célula individual do tabuleiro
   cell: {
-    width: 80,
-    height: 80,
-    borderWidth: 2,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    margin: 4,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    width: 84,                  // Largura fixa
+    height: 84,                 // Altura fixa (quadrado)
+    borderWidth: 1,             // Borda fina
+    alignItems: "center",       // Centraliza conteúdo horizontalmente
+    justifyContent: "center",   // Centraliza conteúdo verticalmente
+    margin: 2,                  // Espaço entre células
+    borderRadius: 10,           // Cantos arredondados
   },
-  cellDisabled: {
-    opacity: 0.7,
+  // Texto dentro da célula (X ou O)
+  cellText: { 
+    fontSize: 28,               // Tamanho grande
+    fontWeight: "800",          // Negrito forte
   },
-  cellText: {
-    fontSize: 32,
-    fontWeight: "900",
+  // Container dos botões de ação
+  actions: { 
+    flexDirection: "row",       // Layout horizontal
+    marginTop: 24,              // Espaço acima
   },
-  controls: {
-    flexDirection: "row",
-    gap: 16,
-    marginTop: 30,
-    marginBottom: 20,
+  // Botão genérico
+  button: { 
+    borderWidth: 1,             // Borda
+    borderRadius: 10,           // Cantos arredondados
+    paddingHorizontal: 16,      // Espaçamento horizontal interno
+    paddingVertical: 10,        // Espaçamento vertical interno
   },
-  button: {
-    flex: 1,
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    alignItems: "center",
-    minWidth: 120,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "700",
+  // Texto do botão
+  buttonText: { 
+    fontSize: 14,               // Tamanho pequeno
+    fontWeight: "700",          // Negrito
   },
 });
