@@ -115,9 +115,9 @@ const styles = StyleSheet.create({
     position: "absolute",           // Posicionamento absoluto na tela
     
     // ✅ POSIÇÃO INFERIOR ESQUERDA
-    bottom: Platform.OS === 'ios' ? 34 : 20, // Mais espaço no iOS para evitar barra de gestos
+    bottom: Platform.OS === 'ios' ? 100 : 80, // Mais espaço no iOS para evitar barra de gestos
     left: 20,                       // 20 pontos da borda esquerda
-    
+    zIndex: 10,
     /**
      * Porque Platform.OS?
      * - iOS tem uma barra de gestos na parte inferior que pode interferir
