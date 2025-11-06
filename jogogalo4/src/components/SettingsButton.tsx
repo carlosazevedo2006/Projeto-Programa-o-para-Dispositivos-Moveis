@@ -2,7 +2,7 @@
 // =============================================================
 // COMPONENTE: BOTÃO DE DEFINIÇÕES FLUTUANTE
 // POSIÇÃO: INFERIOR ESQUERDA (Não interfere com o conteúdo do jogo)
-// VERSÃO: ATUALIZADA COM NOVA POSIÇÃO VERTICAL
+// VERSÃO: CORRIGIDA - SafeAreaView do pacote correto
 // =============================================================
 
 // Importa React para criar componentes
@@ -12,9 +12,10 @@ import {
   TouchableOpacity,   // Botão sensível ao toque com feedback visual
   Text,               // Componente para exibir texto
   StyleSheet,         // API para criar estilos
-  SafeAreaView,       // Garante que o conteúdo não sobreponha áreas especiais (notch, etc.)
   Platform            // Detecta a plataforma (iOS, Android, Web) para ajustes específicos
 } from "react-native";
+// ✅ CORREÇÃO: Importa SafeAreaView do pacote correto
+import { SafeAreaView } from "react-native-safe-area-context";
 // Importa o hook do tema para cores consistentes
 import { useTheme } from "../theme/Theme";
 
@@ -38,13 +39,17 @@ export default function SettingsButton({ onPress }: Props) {
   // =============================================================
   return (
     /**
-     * SafeAreaView garante que o botão não fique sobreposto a:
+     * ✅ CORREÇÃO: SafeAreaView do pacote 'react-native-safe-area-context'
+     * Garante que o botão não fique sobreposto a:
      * - Notch (iPhone)
      * - Barra de status
      * - Barras de gestos
      * - Áreas inseguras do dispositivo
      */
-    <SafeAreaView style={styles.safeAreaContainer}>
+    <SafeAreaView 
+      style={styles.safeAreaContainer}
+      edges={['left', 'bottom']} // ✅ Especifica quais bordas devem ser seguras
+    >
       
       {/**
        * TouchableOpacity - Botão com efeito visual de opacidade ao ser pressionado
