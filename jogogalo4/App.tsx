@@ -25,14 +25,11 @@ import StatsScreen, { loadStats, saveStats, Stats } from "./src/screens/StatsScr
 // Tema global
 import { ThemeProvider, useTheme } from "./src/theme/Theme";
 
-// *** CORREÇÃO 1: Importar o tipo correto ***
-// Importa o tipo de dificuldade do bot a partir do ficheiro de IA (src/ai/bot.ts)
-import type { BotDifficulty } from "./src/ai/bot"; //
+// Importa o tipo de dificuldade do bot a partir do ficheiro de IA
+import type { BotDifficulty } from "./src/ai/bot";
 
 // Alias para evitar conflitos de tipagem caso Game não declare todas as novas props
 const GameComponent: any = Game;
-
-// *** (Tipo 'BotDifficulty = "easy" | "medium" | "hard"' REMOVIDO DAQUI) ***
 
 // Componente interno que consome o tema global
 function AppInner() {
@@ -49,9 +46,8 @@ function AppInner() {
   // Símbolo escolhido pelo humano no singleplayer
   const [humanMark, setHumanMark] = useState<"X" | "O">("X");
   
-  // *** CORREÇÃO 2: Usar o valor inicial correto ***
-  // Usa o valor inicial "Medio" (com M maiúsculo) que corresponde ao tipo importado
-  const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("Medio"); //
+  // Dificuldade do bot
+  const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("Medio");
 
   // Estado do modal de resultado
   const [resultOpen, setResultOpen] = useState(false);
@@ -128,6 +124,10 @@ function AppInner() {
     <SafeAreaProvider>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         
+        {/* ===================================================== */}
+        {/* SCREENS PRINCIPAIS */}
+        {/* ===================================================== */}
+        
         {stage === "splash" && (
           <SplashScreen onDone={() => setStage("mode")} />
         )}
@@ -150,7 +150,7 @@ function AppInner() {
           <SinglePlayer
             onChoose={(payload) => {
               setHumanMark(payload.mark);
-              setBotDifficulty(payload.difficulty); // Agora os tipos batem certo
+              setBotDifficulty(payload.difficulty);
               setStage("game");
             }}
             onBack={() => setStage("mode")}
@@ -174,7 +174,7 @@ function AppInner() {
             botEnabled={isSingle}
             botMark={botMark}
             humanMark={humanMark}
-            botDifficulty={botDifficulty} // Passa o tipo correto ("Facil", "Medio", "Dificil")
+            botDifficulty={botDifficulty}
             onGameEnd={showResult}
           />
         )}
@@ -183,15 +183,23 @@ function AppInner() {
           <StatsScreen onBack={() => setStage("mode")} />
         )}
 
-        {/* *** CORREÇÃO 3: A sintaxe do onPress ***
-            Tem de ser uma função () => ...
-        */}
-        <SettingsButton onPress={() => setSettingsOpen(true)} />
+        {/* ===================================================== */}
+        {/* ✅ CORREÇÃO: SETTINGS BUTTON APENAS EM SCREENS ESPECÍFICAS */}
+        {/* Aparece apenas em: mode, single, multi, stats */}
+        {/* NÃO aparece em: splash, game */}
+        {/* ===================================================== */}
+        {(stage === "mode" || stage === "single" || stage === "multi" || stage === "stats") && (
+          <SettingsButton onPress={() => setSettingsOpen(true)} />
+        )}
 
+        {/* ===================================================== */}
+        {/* MODAIS (disponíveis em todas as screens) */}
+        {/* ===================================================== */}
+        
         {/* Modal de Definições */}
         <SettingsModal
           visible={settingsOpen}
-          onClose={() => setSettingsOpen(false)} // Esta função agora será chamada corretamente
+          onClose={() => setSettingsOpen(false)}
           onToggleTheme={toggleDarkMode}
           onResetGame={() => {
             setSettingsOpen(false); 
