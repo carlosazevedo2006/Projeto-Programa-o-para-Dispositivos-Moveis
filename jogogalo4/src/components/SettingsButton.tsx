@@ -2,6 +2,7 @@
 // =============================================================
 // COMPONENTE: BOTÃO DE DEFINIÇÕES FLUTUANTE
 // POSIÇÃO: INFERIOR ESQUERDA (Não interfere com o conteúdo do jogo)
+// VERSÃO: ATUALIZADA COM NOVA POSIÇÃO VERTICAL
 // =============================================================
 
 // Importa React para criar componentes
@@ -106,23 +107,30 @@ const styles = StyleSheet.create({
    * - position: 'absolute' → Permite que o botão flutue sobre outros componentes
    * - bottom → Distância do fundo da tela
    * - left → Distância da borda esquerda
+   * - zIndex → Garante que o botão fique sempre por cima de outros elementos
    * 
    * Ajustes por plataforma:
-   * - iOS: 34px do fundo (evita a barra de gestos)
-   * - Android/Outros: 20px do fundo
+   * - iOS: 100px do fundo (mais afastado para evitar barra de gestos)
+   * - Android/Outros: 80px do fundo (posição mais acessível)
    */
   safeAreaContainer: {
     position: "absolute",           // Posicionamento absoluto na tela
     
-    // ✅ POSIÇÃO INFERIOR ESQUERDA
-    bottom: Platform.OS === 'ios' ? 100 : 80, // Mais espaço no iOS para evitar barra de gestos
+    // ✅ POSIÇÃO INFERIOR ESQUERDA ATUALIZADA
+    bottom: Platform.OS === 'ios' ? 100 : 80, // ✅ ALTERAÇÃO: Mais espaço do fundo
     left: 20,                       // 20 pontos da borda esquerda
-    zIndex: 10,
+    zIndex: 10,                     // ✅ ALTERAÇÃO: Garante que fica por cima de outros elementos
+    
     /**
      * Porque Platform.OS?
      * - iOS tem uma barra de gestos na parte inferior que pode interferir
      * - Android tem comportamentos diferentes dependendo da versão/fabricante
      * - Web não precisa de ajustes especiais
+     * 
+     * Porque zIndex: 10?
+     * - Garante que o botão está sempre visível sobre outros componentes
+     * - Valor 10 é alto o suficiente para sobrepor a maioria dos elementos
+     * - Evita que seja ocultado por modais ou outros componentes absolutos
      */
   },
 
@@ -199,22 +207,40 @@ const styles = StyleSheet.create({
  * 5. ✅ TEMA CONSISTENTE - Usa cores do sistema de temas
  * 6. ✅ FEEDBACK VISUAL - TouchableOpacity fornece feedback nativo
  * 7. ✅ ÁREAS SEGURAS - Respeita notch, barras de gestos, etc.
+ * 8. ✅ PRIORIDADE VISUAL - zIndex garante que está sempre visível
  */
 
 /**
  * COMPORTAMENTO EM DIFERENTES PLATAFORMAS:
  * 
  * iOS:
- * - Posicionado 34px do fundo (evita barra de gestos)
+ * - Posicionado 100px do fundo (evita barra de gestos com maior margem)
  * - Sombra suave (propriedades shadow*)
  * 
  * Android:
- * - Posicionado 20px do fundo
+ * - Posicionado 80px do fundo (posição mais acessível)
  * - Elevação nativa (propriedade elevation)
  * 
  * Web:
- * - Posicionado 20px do fundo
+ * - Posicionado 80px do fundo
  * - Funciona com mouse e toque
+ */
+
+/**
+ * ALTERAÇÕES REALIZADAS:
+ * 
+ * 1. ✅ bottom aumentado:
+ *    - iOS: 34px → 100px
+ *    - Android: 20px → 80px
+ * 
+ * 2. ✅ zIndex adicionado:
+ *    - Valor: 10
+ *    - Garante visibilidade sobre outros elementos
+ * 
+ * 3. ✅ Posição mais ergonómica:
+ *    - Mais fácil de alcançar com o polegar
+ *    - Não interfere com gestos do sistema
+ *    - Melhor visibilidade durante o jogo
  */
 
 /**
@@ -230,4 +256,7 @@ const styles = StyleSheet.create({
  * Para ajustar a aparência:
  * - Modificar cores dinâmicas no style do TouchableOpacity
  * - Alterar ícone no Text interno
+ * 
+ * Para ajustar a camada:
+ * - Modificar 'zIndex' para valores maiores ou menores
  */
